@@ -1,0 +1,144 @@
+{
+    "data": {
+        "sales": {
+            "sales": [
+                {
+                    "id": "3649310c-bd08-85a2-11ef-7c68644f5879",
+                    "customFields": [],
+                    "saleDate": "2024-09-27T01:34:49Z",
+                    "note": "",
+                    "accountsTransactionID": "03c3af56-9110-4512-8be3-18693c786b96",
+                    "balanceTaxInclusive": {
+                        "amountRounded": "-6",
+                        "__typename": "Money"
+                    },
+                    "hasUnsyncedOnAccountPayments": true,
+                    "version": 46203300905,
+                    "externalApplications": [],
+                    "cashDiscount": {
+                        "amount": "0",
+                        "__typename": "Money"
+                    },
+                    "serviceFee": {
+                        "amount": "0",
+                        "__typename": "Money"
+                    },
+                    "ecomCustomCharges": {
+                        "total": {
+                            "amount": "0",
+                            "__typename": "Money"
+                        },
+                        "totalTax": {
+                            "amount": "0",
+                            "__typename": "Money"
+                        },
+                        "totalIncl": {
+                            "amount": "0",
+                            "__typename": "Money"
+                        },
+                        "charges": [],
+                        "__typename": "EcomCustomCharges"
+                    },
+                    "tipAmount": {
+                        "amount": "0",
+                        "__typename": "Money"
+                    },
+                    "surcharge": null,
+                    "lineItems": [
+                        {
+                            "id": "3649310c-bd08-85a2-11ef-7c7086a66aaa",
+                            "customFields": [],
+                            "isReturn": false,
+                            "quantity": "1",
+                            "priceTotal": {
+                                "amountRounded": "2.61",
+                                "__typename": "Money"
+                            },
+                            "priceUnit": {
+                                "amount": "2.6087",
+                                "amountRounded": "2.61",
+                                "__typename": "Money"
+                            },
+                            "taxTotal": {
+                                "amount": "0.39131",
+                                "__typename": "Money"
+                            },
+                            "product": {
+                                "id": "34b3df68-de37-47d3-bbe4-4723103d37fb",
+                                "attributes": [],
+                                "__typename": "Product"
+                            },
+                            "__typename": "LineItem"
+                        }
+                    ],
+                    "returnFor": null,
+                    "returns": [],
+                    "totalPrice": {
+                        "amount": "2.61",
+                        "__typename": "Money"
+                    },
+                    "totalTax": {
+                        "amount": "0.39",
+                        "__typename": "Money"
+                    },
+                    "priceTotalTaxInclusive": {
+                        "amountRounded": "3",
+                        "__typename": "Money"
+                    },
+                    "register": {
+                        "id": "06e94082-ed4f-11ee-f619-e1b5cda3b20e",
+                        "__typename": "Register"
+                    },
+                    "outlet": {
+                        "id": "06e94082-ed4f-11ee-f619-e1b5cda11521",
+                        "name": "Commercial St",
+                        "__typename": "Outlet"
+                    },
+                    "customer": {
+                        "id": "062791b7-ddcd-11ee-eaf5-fba3bb69b5f3",
+                        "code": "Andrew-2AG7",
+                        "contact": {
+                            "email": "alamason@doc.govt.nz",
+                            "fullPhysicalAddress": "NZ",
+                            "fullPostalAddress": "NZ",
+                            "mobile": "0272035168",
+                            "phone": null,
+                            "__typename": "Contact"
+                        },
+                        "companyName": null,
+                        "firstName": "Andrew",
+                        "lastName": "Lamason",
+                        "dateOfBirth": null,
+                        "deletedAt": null,
+                        "__typename": "Customer"
+                    },
+                    "channelSale": null,
+                    "user": {
+                        "id": "0a4c4486-f925-11ee-fc19-e1b5cd529ff4",
+                        "displayName": "Christopher Bennett",
+                        "username": "qr@lpcb.org",
+                        "images": {
+                            "sm": "",
+                            "__typename": "ImageSizes"
+                        },
+                        "imageSource": "",
+                        "__typename": "User"
+                    },
+                    "invoiceNumber": "1220",
+                    "status": "ONACCOUNT",
+                    "__typename": "Sale"
+                }
+            ],
+            "pageInfo": {
+                "startCursor": "0",
+                "endCursor": "50",
+                "hasNextPage": false,
+                "__typename": "PageInfo"
+            },
+            "__typename": "SalesConnection"
+        }
+    }
+}
+
+
+4687
