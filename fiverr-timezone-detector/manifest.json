@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Country Time Highlighter",
+  "version": "1.3",
+  "description": "Highlight local times close to current time in selected country time zones on the active tab, with badges on divs containing local time.",
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Country Time Highlighter"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

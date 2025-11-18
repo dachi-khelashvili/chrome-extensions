@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Auto Control — Snippets</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 780px; margin: 24px; }
+    .row { margin-bottom: 16px; }
+    textarea { width: 100%; min-height: 120px; }
+    .hint { color: #666; font-size: 12px; margin-top: 4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    select, input { width: 100%; padding: 6px 8px; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .switch { display:flex; align-items:center; gap:8px; }
+    .muted { color:#666; font-size:12px; }
+    .small { color:#444; font-size:12px; margin-top:6px; line-height:1.5; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1 style="margin:0">Snippets</h1>
+    <button id="save">Save</button>
+  </div>
+
+  <div class="switch">
+    <input type="checkbox" id="useCDP">
+    <label for="useCDP"><strong>Use DevTools Protocol typing first</strong> <span class="muted">(requires debugger consent when first used per tab)</span></label>
+  </div>
+
+  <div class="grid">
+    <label>Fallback mode
+      <select id="mode">
+        <option value="type">Type like keyboard</option>
+        <option value="paste">Paste instantly</option>
+      </select>
+    </label>
+    <label>Typing delay per character (ms)
+      <input id="delayMs" type="number" min="0" step="1" placeholder="30" />
+    </label>
+  </div>
+
+  <p class="hint">Set keyboard shortcuts: open <code>chrome://extensions/shortcuts</code> → “Auto Control — Type by Hotkey”.</p>
+  <div id="rows"></div>
+  <p class="small">Tip: Add <em>multiple messages per hotkey</em> by putting <strong>one message per line</strong>. When you press the hotkey, one line will be chosen at random.</p>
+  <script src="options.js"></script>
+</body>
+</html>
