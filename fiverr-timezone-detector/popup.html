@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Country Time Highlighter</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        padding: 10px;
+        min-width: 230px;
+      }
+      h3 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        font-size: 16px;
+      }
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+      select, button {
+        width: 100%;
+        margin-bottom: 8px;
+        font-size: 13px;
+        padding: 6px;
+        box-sizing: border-box;
+      }
+      button {
+        cursor: pointer;
+      }
+      small {
+        font-size: 11px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Country Time Highlighter</h3>
+
+    <label for="countrySelect">Country</label>
+    <select id="countrySelect">
+      <option value="US">United States</option>
+      <option value="UK">United Kingdom</option>
+      <option value="CA">Canada</option>
+      <option value="AU">Australia</option>
+      <option value="JP">Japan</option>
+      <option value="DE">Germany</option>
+    </select>
+
+    <button id="saveBtn">Save country</button>
+    <button id="scanBtn">Rescan this tab</button>
+
+    <small>
+      Looks for text like "02:35 AM local time".<br>
+      If within 10 minutes of any time zone in the selected country, it highlights the div
+      containing that text and adds one green badge with the state/city.
+    </small>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
