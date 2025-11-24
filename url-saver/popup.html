@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>URL Saver & Diff</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 14px; margin: 10px; width: 320px; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 80px; margin-bottom: 8px; padding: 6px; resize: vertical; }
+    button { width: 100%; padding: 8px; margin-bottom: 8px; cursor: pointer; }
+    .label { font-weight: 600; margin: 4px 0; }
+    .small { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="label">Input Text</div>
+  <textarea id="inputText" placeholder="Paste text containing URLs here..."></textarea>
+
+  <button id="processBtn">Find New URLs & Save</button>
+
+  <div class="label">New / Different URLs</div>
+  <textarea id="outputText" placeholder="New URLs will appear here..." readonly></textarea>
+
+  <button id="copyBtn">Copy New URLs</button>
+
+  <div class="small" id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
