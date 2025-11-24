@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Per-Trigger Copy Replacer",
+  "version": "1.3",
+  "description": "For each trigger text, use its own list of replacement texts when copied.",
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_title": "Copy Replacer Settings",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ]
+}
