@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Copy Randomizer",
+  "version": "1.0.0",
+  "description": "Pastes random sentences instead of what you copied.",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_title": "Copy Randomizer Settings",
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "scripts/content.js"
+      ]
+    }
+  ]
+}
