@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fiverr Time Filter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <h1>Fiverr Local Times</h1>
+
+      <div id="tabs-container"></div>
+
+      <hr />
+
+      <form id="filter-form">
+        <label for="country-input">Keep only tabs in this country:</label>
+        <input
+          type="text"
+          id="country-input"
+          placeholder="e.g. Germany, Nigeria, United States"
+        />
+        <button type="submit" id="close-button">Close other tabs</button>
+      </form>
+
+      <p id="status"></p>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
