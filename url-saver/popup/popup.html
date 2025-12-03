@@ -112,6 +112,12 @@
       margin: 0;
     }
 
+    .label-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .label-with-button button {
       width: auto;
       margin: 0;
@@ -128,9 +134,62 @@
       fill: currentColor;
     }
 
+    .input-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .input-meta label {
+      margin: 0;
+    }
+
+    .counts {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #0a1c34;
+    }
+
+    .count-pill {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(21, 34, 56, 0.06);
+      border: 1px solid rgba(21, 34, 56, 0.12);
+      font-size: 11px;
+      font-weight: 500;
+      color: #0a1c34;
+      white-space: nowrap;
+    }
+
+    .icon-button-tiny {
+      padding: 2px;
+      border-radius: 999px;
+      background: transparent;
+      border: none;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .icon-button-tiny svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .icon-button-tiny:hover {
+      background: rgba(21, 34, 56, 0.08);
+    }
+
     textarea {
       width: 100%;
-      height: 140px;
+      height: 100px;
       box-sizing: border-box;
       font-size: 12px;
       font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -140,7 +199,7 @@
       resize: vertical;
       background: #fdfefe;
       color: #000;
-      margin-bottom: 10px;
+      margin-bottom: 4px;
     }
 
     .hint {
@@ -155,6 +214,54 @@
       justify-content: space-between;
       gap: 8px;
       margin-top: 14px;
+    }
+
+    .inline-actions {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .inline-actions-main {
+      flex: 1 1 auto;
+    }
+
+    .inline-actions-side {
+      flex: 0 0 150px;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    /* Make real URLs textarea the same height as the main find button */
+    .inline-actions-main button,
+    .inline-actions-side textarea {
+      height: 30px;
+    }
+
+    .inline-actions-side textarea {
+      resize: none;
+      margin-bottom: 0;
+      padding: 6px 8px;
+      font-size: 11px;
+    }
+
+    .inline-actions-side button {
+      margin-bottom: 0;
+      width: auto;
+    }
+
+    .btn-compact {
+      padding: 2px 6px;
+      font-size: 0;
+      width: 24px;
+      min-width: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
     }
 
     button {
@@ -269,19 +376,51 @@
       </header>
 
       <section>
-        <label for="inputText">Input Text</label>
+        <div class="input-meta">
+          <label for="inputText">Input</label>
+          <div class="counts">
+            <span id="totalCount" class="count-pill">All: 0</span>
+            <span id="todayCount" class="count-pill">Today: 0</span>
+            <button id="resetTodayBtn" class="icon-button-tiny" aria-label="Reset today count" title="Reset Today Count">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5 0 1.01-.3 1.95-.82 2.75l1.46 1.46A6.96 6.96 0 0019 13c0-3.87-3.13-7-7-7zm-5.64.39L4.9 7.85A6.96 6.96 0 005 13c0 3.87 3.13 7 7 7v3l4-4-4-4v3c-2.76 0-5-2.24-5-5 0-1.3.5-2.48 1.32-3.36L6.36 6.39z"/>
+              </svg>
+            </button>
+            <span id="realCount" class="count-pill">Real: 0</span>
+            <button id="resetRealBtn" class="icon-button-tiny" aria-label="Reset real URLs count" title="Reset Real URLs Count">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 6V3L8 7l4 4V8c2.76 0 5 2.24 5 5 0 1.01-.3 1.95-.82 2.75l1.46 1.46A6.96 6.96 0 0019 13c0-3.87-3.13-7-7-7zm-5.64.39L4.9 7.85A6.96 6.96 0 005 13c0 3.87 3.13 7 7 7v3l4-4-4-4v3c-2.76 0-5-2.24-5-5 0-1.3.5-2.48 1.32-3.36L6.36 6.39z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
         <textarea id="inputText" placeholder="Paste text containing URLs here..."></textarea>
-        <button id="processBtn">Find New URLs & Save</button>
+        <div class="inline-actions">
+          <div class="inline-actions-main">
+            <button id="processBtn">Find New URLs & Save</button>
+          </div>
+          <div class="inline-actions-side">
+            <textarea id="realInput" placeholder="..."></textarea>
+            <button id="realAddBtn" class="btn-compact" aria-label="Add real URLs" title="Add Real URLs">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M12 5v14m-7-7h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </section>
 
       <section>
         <div class="label-with-button">
           <label>New / Different URLs</label>
-          <button id="copyBtn" aria-label="Copy New URLs" title="Copy New URLs">
+          <div class="label-actions">
+            <span id="recentCount" class="count-pill">0 new</span>
+            <button id="copyBtn" aria-label="Copy New URLs" title="Copy New URLs">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
               <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
             </svg>
           </button>
+          </div>
         </div>
         <div class="url-list" id="urlList"></div>
         <div class="status" id="status"></div>
