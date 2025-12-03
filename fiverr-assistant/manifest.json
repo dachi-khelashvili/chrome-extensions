@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Fiverr Assistant",
+  "version": "1.0.0",
+  "description": "Automates button clicks on Fiverr freelancer pages with space key",
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://pro.fiverr.com/freelancers/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+
