@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Discord Server Badge Filter",
+  "version": "2.0.0",
+  "description": "Lightweight extension that filters Discord servers by English-only content and member count. Dims non-eligible servers automatically.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://discord.com/*"
+  ],
+  "action": {
+    "default_title": "Discord Server Badge Filter",
+    "default_popup": "src/popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://discord.com/*"
+      ],
+      "js": [
+        "src/content/content.js"
+      ],
+      "css": [
+        "src/styles/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
