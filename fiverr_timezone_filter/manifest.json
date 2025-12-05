@@ -3,6 +3,12 @@
   "name": "Fiverr Local Time Filter",
   "version": "1.0.0",
   "description": "Read freelancer local times on Fiverr Pro and close tabs not in a chosen country/timezone.",
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  },
   "permissions": ["tabs", "storage", "scripting"],
   "host_permissions": [
     "https://pro.fiverr.com/freelancers/*"
@@ -19,6 +25,12 @@
   ],
   "action": {
     "default_popup": "popup/index.html",
-    "default_title": "Fiverr Time Filter"
+    "default_title": "Fiverr Time Filter",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
   }
 }

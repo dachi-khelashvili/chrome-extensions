@@ -31,11 +31,35 @@ header {
   color: #fff;
 }
 
+header .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+header img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+  flex-shrink: 0;
+}
+
 header h1 {
   font-size: 16px;
   margin: 0;
   font-weight: 600;
-  flex: 1;
+  line-height: 1.2;
+}
+
+header small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.9;
+  margin-top: 2px;
+  font-weight: 400;
 }
 
 .icon-button {
