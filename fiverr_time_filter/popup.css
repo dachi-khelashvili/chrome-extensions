@@ -17,11 +17,44 @@ h1 {
   margin-bottom: 8px;
 }
 
-.tab-item {
-  border: 1px solid #ddd;
-  border-radius: 6px;
+.tabs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.tab-row {
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-row:last-child {
+  border-bottom: none;
+}
+
+.tab-row td {
   padding: 6px 8px;
-  margin-bottom: 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.col-number {
+  width: 30px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.col-username {
+  width: 120px;
+  font-weight: 500;
+}
+
+.col-time {
+  width: 140px;
+}
+
+.col-countries {
+  width: auto;
+  color: #555;
 }
 
 .tab-title {
