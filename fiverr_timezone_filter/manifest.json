@@ -8,17 +8,17 @@
     "https://pro.fiverr.com/freelancers/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "scripts/background.js"
   },
   "content_scripts": [
     {
       "matches": ["https://pro.fiverr.com/freelancers/*"],
-      "js": ["contentScript.js"],
+      "js": ["scripts/contentScript.js"],
       "run_at": "document_end"
     }
   ],
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "popup/index.html",
     "default_title": "Fiverr Time Filter"
   }
 }

@@ -228,7 +228,7 @@ function injectContentScript(tabId) {
       chrome.scripting.executeScript(
         {
           target: { tabId },
-          files: ["contentScript.js"]
+          files: ["scripts/contentScript.js"]
         },
         () => {
           // Ignore errors (tab might not be accessible)
@@ -449,6 +449,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       sendResponse({ status: "ok", tabCount: tabs.length });
     });
+    return true;
+  }
+
+  if (message.type === "REFRESH_SINGLE_TAB") {
+    const tabId = message.tabId;
+    if (tabId) {
+      // Reload the tab first, then trigger recheck after a delay
+      chrome.tabs.reload(tabId, () => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ status: "error", message: chrome.runtime.lastError.message });
+          return;
+        }
+        // Wait for page to load, then trigger recheck
+        setTimeout(() => {
+          triggerRecheck(tabId);
+          sendResponse({ status: "ok" });
+        }, 1500);
+      });
+    } else {
+      sendResponse({ status: "error", message: "No tab ID provided" });
+    }
     return true;
   }
 

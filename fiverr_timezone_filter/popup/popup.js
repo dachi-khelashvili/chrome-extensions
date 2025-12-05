@@ -67,7 +67,7 @@ function renderTabs(tabs) {
     let preferredStatus = "";
     
     if (info.hasLocalTime) {
-      const timeStr = formatTime(info.hours24, info.minutes);
+    const timeStr = formatTime(info.hours24, info.minutes);
       localTimeText = timeStr || "No local time";
       
       if (info.isPreferredLocation) {
@@ -89,14 +89,58 @@ function renderTabs(tabs) {
     cell2.className = "col-time";
 
     const cell3 = document.createElement("td");
-    cell3.textContent = preferredStatus;
     cell3.className = "col-status";
-    if (info.isPreferredLocation) {
-      cell3.classList.add("preferred");
-    } else if (!info.hasLocalTime) {
+    
+    if (!info.hasLocalTime) {
+      // For "No local time", add text and refresh button
       cell3.classList.add("no-local-time");
+      const wrapper = document.createElement("span");
+      wrapper.className = "no-local-time-wrapper";
+      
+      const statusText = document.createElement("span");
+      statusText.className = "status-container";
+      statusText.textContent = preferredStatus;
+      wrapper.appendChild(statusText);
+      
+      const refreshButton = document.createElement("button");
+      refreshButton.className = "tiny-refresh-button";
+      refreshButton.type = "button";
+      refreshButton.title = "Refresh this tab";
+      refreshButton.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13.65 2.35C12.2 0.9 10.2 0 8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C11.73 16 14.84 13.45 15.73 10H13.65C12.83 12.33 10.61 14 8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C9.66 2 11.14 2.69 12.22 3.78L9 7H16V0L13.65 2.35Z" fill="currentColor"/>
+        </svg>
+      `;
+      
+      refreshButton.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent row click
+        refreshButton.disabled = true;
+        refreshButton.style.opacity = "0.5";
+        
+        chrome.runtime.sendMessage({
+          type: "REFRESH_SINGLE_TAB",
+          tabId: info.tabId
+        }, (response) => {
+          refreshButton.disabled = false;
+          refreshButton.style.opacity = "1";
+          
+          // Wait a bit then reload tabs to see updated data
+          setTimeout(() => {
+            loadTabs();
+          }, 1000);
+        });
+      });
+      
+      wrapper.appendChild(refreshButton);
+      cell3.appendChild(wrapper);
     } else {
-      cell3.classList.add("not-preferred");
+      // For tabs with local time, just show text
+      cell3.textContent = preferredStatus;
+      if (info.isPreferredLocation) {
+        cell3.classList.add("preferred");
+      } else {
+        cell3.classList.add("not-preferred");
+      }
     }
 
     row.appendChild(cell1);
