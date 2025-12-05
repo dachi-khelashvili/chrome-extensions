@@ -50,7 +50,18 @@
 
   function sendLocalTimeToBackground() {
     const result = findLocalTimeElement();
-    if (!result) return;
+    if (!result) {
+      // Send message that there's no local time
+      chrome.runtime.sendMessage(
+        {
+          type: "NO_LOCAL_TIME"
+        },
+        () => {
+          // ignore response
+        }
+      );
+      return;
+    }
 
     const { parsed, fullText } = result;
     const offsetMinutes = computeOffsetMinutes(parsed.hours24, parsed.minutes);

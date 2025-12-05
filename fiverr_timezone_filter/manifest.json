@@ -5,7 +5,7 @@
   "description": "Read freelancer local times on Fiverr Pro and close tabs not in a chosen country/timezone.",
   "permissions": ["tabs", "storage", "scripting"],
   "host_permissions": [
-    "https://pro.fiverr.com/*"
+    "https://pro.fiverr.com/freelancers/*"
   ],
   "background": {
     "service_worker": "background.js"
