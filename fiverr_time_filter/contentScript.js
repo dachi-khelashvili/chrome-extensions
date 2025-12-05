@@ -69,9 +69,23 @@
     );
   }
 
-  if (document.readyState === "complete" || document.readyState === "interactive") {
+  function runExtraction() {
     sendLocalTimeToBackground();
-  } else {
-    document.addEventListener("DOMContentLoaded", sendLocalTimeToBackground);
   }
+
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    runExtraction();
+  } else {
+    document.addEventListener("DOMContentLoaded", runExtraction);
+  }
+
+  // Listen for recheck messages
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "RECHECK") {
+      // Clear the processed flag to allow re-extraction
+      delete window.__fiverrLocalTimeProcessed;
+      runExtraction();
+      sendResponse({ status: "ok" });
+    }
+  });
 })();

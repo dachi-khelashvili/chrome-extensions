@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Slack Timezone Detector",
+  "version": "1.0.0",
+  "description": "Detects local time from Slack and shows possible countries/timezones",
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

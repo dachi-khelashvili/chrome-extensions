@@ -39,10 +39,64 @@ function getTimezoneInfo(offsetMinutes) {
   };
 }
 
+function injectContentScript(tabId) {
+  // First clear the processed flag, then inject content script
+  chrome.scripting.executeScript(
+    {
+      target: { tabId },
+      func: () => {
+        if (window.__fiverrLocalTimeProcessed) {
+          delete window.__fiverrLocalTimeProcessed;
+        }
+      }
+    },
+    () => {
+      if (chrome.runtime.lastError) {
+        return;
+      }
+      chrome.scripting.executeScript(
+        {
+          target: { tabId },
+          files: ["contentScript.js"]
+        },
+        () => {
+          // Ignore errors (tab might not be accessible)
+        }
+      );
+    }
+  );
+}
+
+function triggerRecheck(tabId) {
+  chrome.tabs.sendMessage(tabId, { type: "RECHECK" }, () => {
+    if (chrome.runtime.lastError) {
+      injectContentScript(tabId);
+    }
+  });
+}
+
+// Inject content script into all existing Fiverr tabs on startup
+chrome.runtime.onStartup.addListener(() => {
+  chrome.tabs.query({ url: "https://pro.fiverr.com/freelancers/*" }, (tabs) => {
+    tabs.forEach((tab) => {
+      triggerRecheck(tab.id);
+    });
+  });
+});
+
+// Also inject when extension is installed/reloaded
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.tabs.query({ url: "https://pro.fiverr.com/freelancers/*" }, (tabs) => {
+    tabs.forEach((tab) => {
+      triggerRecheck(tab.id);
+    });
+  });
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "LOCAL_TIME_INFO" && sender.tab) {
     const tabId = sender.tab.id;
-    const { localTimeText, offsetMinutes } = message;
+    const { localTimeText, offsetMinutes, hours24, minutes } = message;
     const tz = getTimezoneInfo(offsetMinutes);
 
     tabTimeInfo[tabId] = {
@@ -50,6 +104,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       url: sender.tab.url,
       title: sender.tab.title,
       localTimeText,
+      hours24,
+      minutes,
       offsetMinutes,
       timezone: tz.label,
       countries: tz.countries
@@ -89,10 +145,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         toClose.forEach((id) => {
           delete tabTimeInfo[id];
         });
+        sendResponse({ closed: toClose.length });
       });
+    } else {
+      sendResponse({ closed: 0 });
     }
+    return true;
+  }
 
-    sendResponse({ closed: toClose.length });
+  if (message.type === "RECHECK_TABS") {
+    // Find all Fiverr tabs and trigger content script re-extraction
+    chrome.tabs.query({ url: "https://pro.fiverr.com/freelancers/*" }, (tabs) => {
+      tabs.forEach((tab) => {
+        triggerRecheck(tab.id);
+      });
+      sendResponse({ status: "ok", tabCount: tabs.length });
+    });
     return true;
   }
 
@@ -106,5 +174,13 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === "loading") {
     delete tabTimeInfo[tabId];
+  }
+  
+  // When tab finishes loading and matches Fiverr pattern, inject content script
+  if (changeInfo.status === "complete" && tab.url && tab.url.match(/https:\/\/pro\.fiverr\.com\/freelancers\//)) {
+    // Small delay to ensure page is fully ready
+    setTimeout(() => {
+      triggerRecheck(tabId);
+    }, 500);
   }
 });
