@@ -1,10 +1,6 @@
 const emailsBox = document.getElementById("emails");
 const countEl = document.getElementById("count");
 const statusEl = document.getElementById("status");
-const locationEl = document.getElementById("location");
-const dateEl = document.getElementById("date");
-const pageEl = document.getElementById("page");
-const openEl = document.getElementById("open");
 
 let fiverrUrls = [];
 
@@ -13,7 +9,8 @@ document.getElementById("copy").addEventListener("click", copyAll);
 document.getElementById("close").addEventListener("click", closeAll);
 
 async function scanAllTabs() {
-    statusEl.textContent = "Scanning…";
+    statusEl.className = "";
+    statusEl.textContent = "Scanning all tabs…";
     emailsBox.textContent = "";
     countEl.textContent = "0";
 
@@ -75,31 +72,36 @@ async function scanAllTabs() {
         }
 
         fiverrUrls = deduped;
-        emailsBox.textContent = deduped.length ? deduped.join("\n") : "No emails found.";
-        countEl.textContent = `(${String(deduped.length)})`;
+        emailsBox.textContent = deduped.length ? deduped.join("\n") : "No URLs found.";
+        countEl.textContent = String(deduped.length);
 
         // Note about blocked pages
         const blockedCount = tabs.length - candidates.length;
+        statusEl.className = "";
         statusEl.textContent = blockedCount > 0
-            ? `Done. Skipped ${blockedCount} disallowed tab(s) (e.g., chrome://, Web Store, PDFs).`
-            : "Done.";
+            ? `Scan complete. Skipped ${blockedCount} disallowed tab(s).`
+            : "Scan complete.";
     } catch (err) {
         emailsBox.textContent = "Error: " + err.message;
-        statusEl.textContent = "Failed.";
+        statusEl.className = "error";
+        statusEl.textContent = "Scan failed. Please try again.";
     }
 }
 
 async function copyAll() {
     if (!fiverrUrls.length) {
-        statusEl.textContent = "Nothing to copy.";
+        statusEl.className = "";
+        statusEl.textContent = "No results to copy. Please scan first.";
         return;
     }
     try {
         await navigator.clipboard.writeText(fiverrUrls.join("\n"));
-        statusEl.textContent = "Copied!";
-        setTimeout(() => (statusEl.textContent = ""), 1200);
+        statusEl.className = "";
+        statusEl.textContent = `Copied ${fiverrUrls.length} URL${fiverrUrls.length === 1 ? '' : 's'} to clipboard!`;
+        setTimeout(() => (statusEl.textContent = ""), 2000);
     } catch (e) {
-        statusEl.textContent = "Clipboard blocked. Try again.";
+        statusEl.className = "error";
+        statusEl.textContent = "Clipboard access denied. Please try again.";
     }
 }
 

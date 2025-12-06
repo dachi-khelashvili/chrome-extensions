@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Fiverr User Extractor</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+      width: 360px;
+      background: #f5f7fb;
+      color: #152238;
+    }
+
+    .panel {
+      box-sizing: border-box;
+    }
+
+    .card {
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(21, 34, 56, 0.08);
+      overflow: hidden;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      border-bottom: 1px solid rgba(21, 34, 56, 0.08);
+      background: linear-gradient(135deg, #1f74ff, #8acbff);
+      color: #fff;
+    }
+
+    header h1 {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    header .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 6px;
+    }
+
+    header small {
+      font-size: 12px;
+      opacity: 0.9;
+      display: block;
+      margin-top: 2px;
+    }
+
+    section {
+      padding: 16px;
+      border-bottom: 1px solid rgba(21, 34, 56, 0.06);
+    }
+
+    section:last-of-type {
+      border-bottom: none;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      padding: 8px 0;
+      align-items: center;
+    }
+
+    .stats {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #5c6b82;
+      font-weight: 500;
+    }
+
+    .stat-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0a1c34;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+      margin-top: 20px;
+      color: #0a1c34;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #5c6b82;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      font-weight: 500;
+    }
+
+    button.primary {
+      background: #1f74ff;
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: #175dd1;
+    }
+
+    button.secondary {
+      background: #f1f3f8;
+      color: #152238;
+      border: 1px solid rgba(21, 34, 56, 0.15);
+    }
+
+    button.secondary:hover {
+      background: #e4e7ed;
+    }
+
+    #count {
+      font-weight: 600;
+      font-size: 13px;
+      color: #0a1c34;
+    }
+
+    #emails {
+      white-space: pre-wrap;
+      font-size: 12px;
+      height: 200px;
+      max-height: 200px;
+      overflow: auto;
+      border: 1px solid rgba(21, 34, 56, 0.15);
+      padding: 10px;
+      border-radius: 8px;
+      background: #fdfefe;
+      color: #000;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      box-sizing: border-box;
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    #status {
+      font-size: 12px;
+      color: #1f8d4d;
+      min-height: 16px;
+      margin-top: 10px;
+      font-weight: 500;
+    }
+
+    #status.error {
+      color: #d32f2f;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 0;
+    }
+
+    /* Restore default scrollbar appearance */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #c1c1c1 #f1f1f1;
+    }
+
+    *::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 6px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="panel">
+    <div class="card">
+      <header>
+        <div class="brand">
+          <img src="../assets/icons/icon-48.png" alt="Fiverr Extractor icon" />
+          <div>
+            <h1>Fiverr User Extractor</h1>
+            <small>Extract user information from Fiverr pages.</small>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <div class="stats">
+          <span class="stat-label">Found:</span>
+          <span class="stat-value" id="count">0</span>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="scan">Scan Pages</button>
+          <button class="secondary" id="copy">Copy Results</button>
+          <button class="secondary" id="close">Close Tabs</button>
+        </div>
+
+        <label for="emails">Results</label>
+        <div class="hint">
+          Scanned URLs will appear here. Click "Scan Pages" to extract user information from all open Fiverr tabs.
+        </div>
+        <div id="emails">Click "Scan Pages" to begin.</div>
+        <div id="status"></div>
+      </section>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
