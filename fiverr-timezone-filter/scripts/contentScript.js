@@ -48,13 +48,71 @@
     return diff;
   }
 
+  function extractFreelancerInfo() {
+    // Extract image - try multiple selectors
+    let imageUrl = "";
+    
+    // Try selector with class _482b46
+    const imgWithClass = document.querySelector('img._482b46[src*="profile/photo"]');
+    if (imgWithClass && imgWithClass.src) {
+      imageUrl = imgWithClass.src;
+    }
+    
+    // Try cloudinary profile photo
+    if (!imageUrl) {
+      const profileImg = document.querySelector('img[src*="fiverr-res.cloudinary.com"][src*="profile/photo"]');
+      if (profileImg && profileImg.src) {
+        imageUrl = profileImg.src;
+      }
+    }
+    
+    // Try any img with profile/photo in src
+    if (!imageUrl) {
+      const anyProfileImg = document.querySelector('img[src*="profile/photo"]');
+      if (anyProfileImg && anyProfileImg.src) {
+        imageUrl = anyProfileImg.src;
+      }
+    }
+    
+    // Extract name - try multiple selectors
+    let freelancerName = "";
+    
+    // Try h1 with aria-label="Public Name"
+    const nameElement = document.querySelector('h1[aria-label="Public Name"]');
+    if (nameElement) {
+      freelancerName = nameElement.textContent.trim() || "";
+    }
+    
+    // Try h1 with classes
+    if (!freelancerName) {
+      const nameEl = document.querySelector('h1.tbody-2.text-bold.co-text-darkest, h1.text-bold.co-text-darkest');
+      if (nameEl) {
+        freelancerName = nameEl.textContent.trim() || "";
+      }
+    }
+    
+    // Try any h1 in the profile area
+    if (!freelancerName) {
+      const anyH1 = document.querySelector('h1');
+      if (anyH1) {
+        freelancerName = anyH1.textContent.trim() || "";
+      }
+    }
+    
+    return { imageUrl, freelancerName };
+  }
+
   function sendLocalTimeToBackground() {
     const result = findLocalTimeElement();
+    const freelancerInfo = extractFreelancerInfo();
+    
     if (!result) {
       // Send message that there's no local time
       chrome.runtime.sendMessage(
         {
-          type: "NO_LOCAL_TIME"
+          type: "NO_LOCAL_TIME",
+          imageUrl: freelancerInfo.imageUrl,
+          freelancerName: freelancerInfo.freelancerName
         },
         () => {
           // ignore response
@@ -72,7 +130,9 @@
         localTimeText: fullText,
         hours24: parsed.hours24,
         minutes: parsed.minutes,
-        offsetMinutes
+        offsetMinutes,
+        imageUrl: freelancerInfo.imageUrl,
+        freelancerName: freelancerInfo.freelancerName
       },
       () => {
         // ignore response
