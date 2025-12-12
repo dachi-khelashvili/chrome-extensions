@@ -33,13 +33,16 @@
 
         <section>
           <form id="filter-form">
-            <label for="country-input">Preferred location (for filtering):</label>
-            <input
-              type="text"
-              id="country-input"
-              placeholder="e.g. Germany, Nigeria, United States"
-              value="United States"
-            />
+            <label for="country-select">Preferred location (for filtering):</label>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
+              <select
+                id="country-select"
+                style="flex: 1; margin-bottom: 0;"
+              >
+                <option value="">Select a country...</option>
+              </select>
+              <button type="button" id="set-location-button" class="set-location-button" title="Set preferred location">Set</button>
+            </div>
             <button type="submit" id="close-button" class="primary">Close other tabs</button>
           </form>
           <div id="status" class="status"></div>

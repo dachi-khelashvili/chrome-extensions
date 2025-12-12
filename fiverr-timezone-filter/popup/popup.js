@@ -36,7 +36,7 @@ function extractUsername(url) {
 }
 
 let countriesByContinent = {};
-let expandedRows = new Set();
+let expandedRows = new Set(); // Now stores tab IDs instead of indices
 let activeCountriesPopup = null;
 
 // Country population data (in millions, approximate 2024 data)
@@ -304,6 +304,72 @@ function getCountriesByContinent() {
       resolve(countriesByContinent);
     });
   });
+}
+
+function getAllCountriesSorted() {
+  const allCountries = new Set();
+  Object.values(countriesByContinent).forEach(continentCountries => {
+    continentCountries.forEach(country => allCountries.add(country));
+  });
+  return Array.from(allCountries).sort();
+}
+
+function populateCountrySelect(selectElement, selectedCountry = "") {
+  // Clear existing options except the first one
+  while (selectElement.options.length > 1) {
+    selectElement.remove(1);
+  }
+  
+  // Get all countries sorted
+  const allCountries = getAllCountriesSorted();
+  
+  // Add countries grouped by continent
+  const continentOrder = ["North America", "South America", "Europe", "Asia", "Africa", "Oceania"];
+  
+  continentOrder.forEach(continent => {
+    if (countriesByContinent[continent] && countriesByContinent[continent].length > 0) {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = continent;
+      
+      const continentCountries = countriesByContinent[continent]
+        .filter(c => allCountries.includes(c))
+        .sort();
+      
+      continentCountries.forEach(country => {
+        const option = document.createElement("option");
+        option.value = country;
+        option.textContent = country;
+        if (country === selectedCountry) {
+          option.selected = true;
+        }
+        optgroup.appendChild(option);
+      });
+      
+      selectElement.appendChild(optgroup);
+    }
+  });
+  
+  // Add any remaining countries not in the continent list (if any)
+  const addedCountries = new Set();
+  Array.from(selectElement.querySelectorAll("option")).forEach(opt => {
+    if (opt.value) addedCountries.add(opt.value);
+  });
+  
+  const remainingCountries = allCountries.filter(c => !addedCountries.has(c));
+  if (remainingCountries.length > 0) {
+    const optgroup = document.createElement("optgroup");
+    optgroup.label = "Other";
+    remainingCountries.forEach(country => {
+      const option = document.createElement("option");
+      option.value = country;
+      option.textContent = country;
+      if (country === selectedCountry) {
+        option.selected = true;
+      }
+      optgroup.appendChild(option);
+    });
+    selectElement.appendChild(optgroup);
+  }
 }
 
 async function copyAllLinksToClipboard(tabs) {
@@ -612,7 +678,7 @@ function renderTabs(tabs) {
     row.className = "tab-row";
     row.dataset.tabIndex = index;
     
-    if (expandedRows.has(index)) {
+    if (expandedRows.has(info.tabId)) {
       row.classList.add("expanded");
     }
 
@@ -762,7 +828,7 @@ function renderTabs(tabs) {
     table.appendChild(row);
 
     // Add expandable content row
-    if (expandedRows.has(index) && info.hasLocalTime && info.countries && info.countries.length > 0) {
+    if (expandedRows.has(info.tabId) && info.hasLocalTime && info.countries && info.countries.length > 0) {
       const expandRow = document.createElement("tr");
       expandRow.className = "expand-row";
       const expandCell = document.createElement("td");
@@ -956,10 +1022,10 @@ function renderTabs(tabs) {
           clickTimeout = null;
         }
         
-        if (expandedRows.has(index)) {
-          expandedRows.delete(index);
+        if (expandedRows.has(info.tabId)) {
+          expandedRows.delete(info.tabId);
         } else {
-          expandedRows.add(index);
+          expandedRows.add(info.tabId);
         }
         renderTabs(tabs);
       });
@@ -1005,16 +1071,18 @@ function requestRecheck() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const form = document.getElementById("filter-form");
-  const input = document.getElementById("country-input");
+  const countrySelect = document.getElementById("country-select");
   const statusEl = document.getElementById("status");
   const recheckButton = document.getElementById("recheck-button");
   const container = document.getElementById("tabs-container");
 
-  // Load preferred location
+  // Load countries and populate select
+  await getCountriesByContinent();
+  
+  // Load preferred location and populate select
   chrome.runtime.sendMessage({ type: "GET_PREFERRED_LOCATION" }, (response) => {
-    if (!chrome.runtime.lastError && response?.preferredLocation) {
-      input.value = response.preferredLocation;
-    }
+    const preferredLocation = (!chrome.runtime.lastError && response?.preferredLocation) ? response.preferredLocation : "";
+    populateCountrySelect(countrySelect, preferredLocation);
   });
 
   async function syncTabs() {
@@ -1054,9 +1122,51 @@ document.addEventListener("DOMContentLoaded", async () => {
     syncTabs();
   });
 
+  // Set preferred location button
+  const setLocationButton = document.getElementById("set-location-button");
+  setLocationButton.addEventListener("click", () => {
+    const country = (countrySelect.value || "").trim();
+
+    if (!country) {
+      statusEl.textContent = "Please type a country name first.";
+      return;
+    }
+
+    statusEl.textContent = "Setting preferred location...";
+
+    // Save preferred location
+    chrome.runtime.sendMessage(
+      {
+        type: "SET_PREFERRED_LOCATION",
+        country
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          statusEl.textContent = "Error setting preferred location.";
+          return;
+        }
+        
+        statusEl.textContent = `Preferred location set to: ${country}`;
+        
+        // Update select to show selected country
+        countrySelect.value = country;
+        
+        // Refresh tab list to show updated preferred status
+        loadTabs();
+        
+        // Clear status message after 2 seconds
+        setTimeout(() => {
+          if (statusEl.textContent === `Preferred location set to: ${country}`) {
+            statusEl.textContent = "";
+          }
+        }, 2000);
+      }
+    );
+  });
+
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const country = (input.value || "").trim();
+    const country = (countrySelect.value || "").trim();
 
     if (!country) {
       statusEl.textContent = "Please type a country name first.";
@@ -1070,6 +1180,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         country
       },
       () => {
+        // Update select to show selected country
+        countrySelect.value = country;
+        // Refresh tab list to show updated preferred status
+        loadTabs();
         // Continue with closing tabs
       }
     );

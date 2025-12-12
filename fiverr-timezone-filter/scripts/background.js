@@ -100,6 +100,37 @@ function getCountryPopulation(country) {
   return COUNTRY_POPULATION[country] || 0;
 }
 
+// Helper function to check if a country matches a preferred location
+// Handles cases like "United States(Ohio, ...)" matching "United States"
+function matchesPreferredLocation(country, preferredLocation) {
+  if (!preferredLocation || !country) return false;
+  
+  const countryName = country.toLowerCase().trim();
+  const prefLoc = preferredLocation.toLowerCase().trim();
+  
+  if (!countryName || !prefLoc) return false;
+  
+  // Extract base country name (before parentheses) if present
+  const baseCountryName = countryName.includes("(") 
+    ? countryName.split("(")[0].trim()
+    : countryName;
+  
+  // Check exact match with base country name (most common case)
+  if (baseCountryName === prefLoc) return true;
+  
+  // Check if base country name starts with preferred location or vice versa
+  // This handles cases like "United States" matching "United States of America"
+  if (baseCountryName.startsWith(prefLoc) || prefLoc.startsWith(baseCountryName)) return true;
+  
+  // Check if preferred location is contained in country name (handles partial matches)
+  if (baseCountryName.includes(prefLoc) || prefLoc.includes(baseCountryName)) return true;
+  
+  // Also check the full country string (for cases where preferred location might be more specific)
+  if (countryName === prefLoc || countryName.includes(prefLoc) || prefLoc.includes(countryName)) return true;
+  
+  return false;
+}
+
 // States/Provinces mapping for large countries by timezone offset
 const STATES_BY_TIMEZONE = {
   "-300": { // UTC-5 (Eastern Time)
@@ -359,7 +390,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         countries: tz.countries,
         rawCountries: tz.rawCountries || tz.countries,
         hasLocalTime: true,
-        isPreferredLocation: preferredLocation ? (tz.rawCountries || tz.countries).some(c => c.toLowerCase() === preferredLocation.toLowerCase()) : false,
+        isPreferredLocation: preferredLocation ? ((tz.rawCountries && tz.rawCountries.length > 0 ? tz.rawCountries : tz.countries) || []).some(c => matchesPreferredLocation(c, preferredLocation)) : false,
         imageUrl: imageUrl || "",
         freelancerName: freelancerName || ""
       };
@@ -410,12 +441,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           .filter(info => tabs.some(tab => tab.id === info.tabId)) // Only include tabs that still exist
           .map(info => {
             if (info.hasLocalTime && preferredLocation) {
-              const countriesToCheck = info.rawCountries || info.countries;
-              info.isPreferredLocation = countriesToCheck.some(c => {
-                const countryName = c.toLowerCase();
-                const prefLocation = preferredLocation.toLowerCase();
-                return countryName === prefLocation || countryName.includes(prefLocation) || prefLocation.includes(countryName);
-              });
+              const countriesToCheck = (info.rawCountries && info.rawCountries.length > 0 ? info.rawCountries : info.countries) || [];
+              info.isPreferredLocation = countriesToCheck.length > 0 && countriesToCheck.some(c => matchesPreferredLocation(c, preferredLocation));
             }
             return info;
           });
@@ -459,7 +486,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "SET_PREFERRED_LOCATION") {
-    setPreferredLocation(message.country || "").then(() => {
+    const newPreferredLocation = (message.country || "").trim();
+    setPreferredLocation(newPreferredLocation).then(() => {
+      // Update isPreferredLocation for all existing tabs
+      for (const [tabIdStr, info] of Object.entries(tabTimeInfo)) {
+        if (info.hasLocalTime && newPreferredLocation) {
+          const countriesToCheck = (info.rawCountries && info.rawCountries.length > 0 ? info.rawCountries : info.countries) || [];
+          info.isPreferredLocation = countriesToCheck.length > 0 && countriesToCheck.some(c => matchesPreferredLocation(c, newPreferredLocation));
+        } else {
+          info.isPreferredLocation = false;
+        }
+      }
       sendResponse({ status: "ok" });
     });
     return true;
@@ -483,12 +520,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     for (const [tabIdStr, info] of Object.entries(tabTimeInfo)) {
       const countriesToCheck = info.rawCountries || info.countries;
-      const matches = countriesToCheck.some(
-        (c) => {
-          const countryName = c.toLowerCase();
-          return countryName === rawCountry || countryName.includes(rawCountry) || rawCountry.includes(countryName);
-        }
-      );
+      const matches = countriesToCheck.some(c => matchesPreferredLocation(c, message.country));
 
       if (!matches) {
         toClose.push(Number(tabIdStr));

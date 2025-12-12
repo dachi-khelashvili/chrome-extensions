@@ -484,7 +484,8 @@ label {
   margin-bottom: 8px;
 }
 
-#country-input {
+#country-input,
+#country-select {
   width: 100%;
   box-sizing: border-box;
   padding: 10px;
@@ -494,12 +495,44 @@ label {
   background: #fdfefe;
   color: #152238;
   margin-bottom: 12px;
+  font-family: system-ui, sans-serif;
 }
 
-#country-input:focus {
+#country-input:focus,
+#country-select:focus {
   outline: none;
   border-color: #1f74ff;
   box-shadow: 0 0 0 3px rgba(31, 116, 255, 0.1);
+}
+
+#country-select {
+  cursor: pointer;
+}
+
+#country-select option {
+  padding: 8px;
+}
+
+.set-location-button {
+  background: #1f74ff;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.set-location-button:hover {
+  background: #175dd1;
+}
+
+.set-location-button:active {
+  background: #1349b3;
 }
 
 button.primary {
