@@ -6,7 +6,7 @@ body {
   font-family: system-ui, sans-serif;
   margin: 0;
   padding: 0;
-  width: 360px;
+  width: 500px;
   background: #f5f7fb;
   color: #152238;
 }
@@ -67,15 +67,18 @@ header small {
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
   border-radius: 6px;
-  padding: 6px;
+  padding: 6px 12px;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  min-width: auto;
+  height: auto;
   margin-left: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .icon-button:hover {
@@ -110,10 +113,61 @@ label {
   color: #0a1c34;
 }
 
+.tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(21, 34, 56, 0.08);
+}
+
+.tabs-status-text {
+  font-size: 12px;
+  color: #5c6b82;
+  font-weight: 600;
+}
+
+.tabs-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 #tabs-container {
   max-height: 280px;
   overflow-y: auto;
   margin-bottom: 12px;
+}
+
+.tabs-action-buttons .icon-button.paste-tabs-button,
+.tabs-action-buttons .icon-button.copy-tabs-button,
+.tabs-action-buttons .icon-button.copy-links-button,
+.tabs-action-buttons .icon-button.close-tabs-button {
+  background: rgba(21, 34, 56, 0.08);
+  border: 1px solid rgba(21, 34, 56, 0.15);
+  color: #152238;
+}
+
+.tabs-action-buttons .icon-button.paste-tabs-button:hover,
+.tabs-action-buttons .icon-button.copy-tabs-button:hover,
+.tabs-action-buttons .icon-button.copy-links-button:hover,
+.tabs-action-buttons .icon-button.close-tabs-button:hover {
+  background: rgba(21, 34, 56, 0.12);
+  border-color: rgba(21, 34, 56, 0.25);
+}
+
+.tabs-action-buttons .icon-button.paste-tabs-button:active,
+.tabs-action-buttons .icon-button.copy-tabs-button:active,
+.tabs-action-buttons .icon-button.copy-links-button:active,
+.tabs-action-buttons .icon-button.close-tabs-button:active {
+  background: rgba(21, 34, 56, 0.16);
+}
+
+.tabs-action-buttons .icon-button.close-tabs-button:hover {
+  background: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #dc3545;
 }
 
 .tabs-table {
@@ -143,24 +197,194 @@ label {
 .tab-row td {
   padding: 8px 12px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
+}
+
+.col-image {
+  width: 50px;
+  text-align: center;
+  padding: 6px !important;
+}
+
+.freelancer-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  margin: 0 auto;
+}
+
+.no-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(21, 34, 56, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5c6b82;
+  font-size: 10px;
+  margin: 0 auto;
+}
+
+.col-name {
+  width: 80px;
+  max-width: 80px;
+  min-width: 80px;
+  color: #152238;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .col-number {
-  width: 30px;
+  width: 20px;
+  min-width: 20px;
   text-align: center;
   font-weight: 600;
   color: #5c6b82;
+  padding: 8px 4px !important;
 }
 
 .col-time {
-  width: 120px;
+  width: 60px;
+  min-width: 60px;
   color: #152238;
 }
 
 .col-status {
-  width: auto;
+  width: 100px;
+  min-width: 100px;
   color: #5c6b82;
+}
+
+.col-actions {
+  width: 40px;
+  min-width: 40px;
+  text-align: center;
+  padding: 6px !important;
+}
+
+.country-with-tooltip {
+  display: inline-block;
+  padding: 2px 6px;
+  background: rgba(21, 34, 56, 0.05);
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.countries-list-compact {
+  line-height: 1.8;
+}
+
+.countries-info-button {
+  background: transparent;
+  border: 1px solid rgba(21, 34, 56, 0.15);
+  color: #5c6b82;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.countries-info-button:hover {
+  background: rgba(21, 34, 56, 0.08);
+  border-color: rgba(21, 34, 56, 0.25);
+  color: #152238;
+}
+
+.countries-info-button:active {
+  transform: scale(0.9);
+}
+
+.countries-info-button svg {
+  width: 12px;
+  height: 12px;
+}
+
+.countries-popup {
+  font-family: system-ui, sans-serif;
+}
+
+.countries-popup::-webkit-scrollbar {
+  width: 8px;
+}
+
+.countries-popup::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.countries-popup::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.countries-popup::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.row-action-button {
+  background: transparent;
+  border: 1px solid rgba(21, 34, 56, 0.15);
+  color: #5c6b82;
+  border-radius: 4px;
+  padding: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.row-action-button.close-row-button {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+}
+
+.row-action-button.close-row-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.row-action-button:hover {
+  background: rgba(21, 34, 56, 0.08);
+  border-color: rgba(21, 34, 56, 0.25);
+}
+
+.row-action-button.close-row-button:hover {
+  background: rgba(220, 53, 69, 0.1);
+  border-color: rgba(220, 53, 69, 0.3);
+  color: #dc3545;
+}
+
+.row-action-button:active {
+  transform: scale(0.9);
+}
+
+.row-action-button svg {
+  width: 12px;
+  height: 12px;
 }
 
 .col-status.preferred {

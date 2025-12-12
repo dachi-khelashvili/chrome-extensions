@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Time Tracker</h1>
+    
+    <div class="date-picker-container">
+      <label for="datePicker">Date:</label>
+      <input type="date" id="datePicker" />
+    </div>
+    
+    <div class="input-container">
+      <input 
+        type="text" 
+        id="taskInput" 
+        placeholder="Enter task description..."
+      />
+      <button id="trackButton">Start</button>
+    </div>
+    
+    <div class="list-container">
+      <h2>Tracked Time</h2>
+      <ul id="timeList"></ul>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+

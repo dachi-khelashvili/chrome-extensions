@@ -5,6 +5,7 @@ const tabTimeInfo = {};
 // Countries by continent
 const COUNTRIES_BY_CONTINENT = {
   "Africa": [
+    "Nigeria", "Egypt", "South Africa", "Kenya", "Morocco", "Tunisia", "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cabo Verde", "Cameroon", 
     "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cabo Verde", "Cameroon", 
     "Central African Republic", "Chad", "Comoros", "Congo", "Côte d'Ivoire", "Djibouti", "Egypt", 
     "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", "Gabon", "Gambia", "Ghana", "Guinea", 
@@ -46,6 +47,59 @@ const COUNTRIES_BY_CONTINENT = {
   ]
 };
 
+// Country population data (in millions, approximate 2024 data)
+const COUNTRY_POPULATION = {
+  "China": 1426, "India": 1428, "United States": 339, "Indonesia": 279, "Pakistan": 240,
+  "Brazil": 216, "Bangladesh": 173, "Russia": 144, "Mexico": 130, "Japan": 125,
+  "Philippines": 118, "Ethiopia": 127, "Egypt": 112, "Vietnam": 99, "Turkey": 86,
+  "Iran": 89, "Germany": 84, "Thailand": 72, "United Kingdom": 68, "France": 68,
+  "Italy": 59, "South Africa": 62, "South Korea": 52, "Spain": 48, "Colombia": 52,
+  "Argentina": 46, "Ukraine": 37, "Poland": 38, "Canada": 39, "Iraq": 46,
+  "Algeria": 46, "Afghanistan": 43, "Saudi Arabia": 37, "Peru": 34, "Uzbekistan": 36,
+  "Malaysia": 34, "Angola": 37, "Mozambique": 34, "Ghana": 34, "Yemen": 34,
+  "Nepal": 31, "Venezuela": 29, "Madagascar": 30, "Cameroon": 29, "Ivory Coast": 29,
+  "North Korea": 26, "Australia": 27, "Niger": 27, "Sri Lanka": 22, "Burkina Faso": 23,
+  "Mali": 23, "Romania": 19, "Malawi": 21, "Chile": 20, "Kazakhstan": 20,
+  "Zambia": 20, "Guatemala": 18, "Ecuador": 18, "Netherlands": 18, "Syria": 23,
+  "Cambodia": 17, "Senegal": 18, "Chad": 18, "Somalia": 18, "Zimbabwe": 16,
+  "Guinea": 14, "Rwanda": 14, "Benin": 14, "Burundi": 13, "Tunisia": 12,
+  "Bolivia": 12, "Belgium": 12, "Haiti": 12, "Jordan": 11, "Cuba": 11,
+  "South Sudan": 11, "Dominican Republic": 11, "Czech Republic": 11, "Greece": 11,
+  "Portugal": 10, "Azerbaijan": 10, "Sweden": 10, "Hungary": 10, "Belarus": 9,
+  "United Arab Emirates": 10, "Honduras": 10, "Tajikistan": 10, "Israel": 10,
+  "Switzerland": 9, "Papua New Guinea": 10, "Togo": 9, "Sierra Leone": 9,
+  "Laos": 8, "Paraguay": 7, "Libya": 7, "Bulgaria": 7, "Lebanon": 7,
+  "Nicaragua": 7, "Kyrgyzstan": 7, "El Salvador": 6, "Turkmenistan": 6,
+  "Singapore": 6, "Denmark": 6, "Finland": 6, "Congo": 6, "Slovakia": 5,
+  "Norway": 5, "Eritrea": 4, "Palestine": 5, "Oman": 5, "Costa Rica": 5,
+  "Liberia": 5, "Ireland": 5, "Central African Republic": 6, "New Zealand": 5,
+  "Mauritania": 5, "Panama": 4, "Kuwait": 5, "Croatia": 4, "Moldova": 3,
+  "Georgia": 4, "Uruguay": 3, "Bosnia and Herzegovina": 3, "Mongolia": 3,
+  "Albania": 3, "Armenia": 3, "Jamaica": 3, "Qatar": 3, "Lithuania": 3,
+  "Namibia": 3, "Gambia": 3, "Botswana": 2, "Gabon": 2, "Lesotho": 2,
+  "Guinea-Bissau": 2, "North Macedonia": 2, "Slovenia": 2, "Latvia": 2,
+  "Equatorial Guinea": 2, "Trinidad and Tobago": 1, "Estonia": 1, "Mauritius": 1,
+  "Eswatini": 1, "Djibouti": 1, "Fiji": 1, "Comoros": 1, "Guyana": 1,
+  "Bhutan": 1, "Solomon Islands": 1, "Luxembourg": 1, "Suriname": 1,
+  "Cabo Verde": 0.6, "Malta": 0.5, "Brunei": 0.5, "Belize": 0.4, "Bahamas": 0.4,
+  "Iceland": 0.4, "Vanuatu": 0.3, "Barbados": 0.3, "Sao Tome and Principe": 0.2,
+  "Samoa": 0.2, "Saint Lucia": 0.2, "Kiribati": 0.1, "Micronesia": 0.1,
+  "Grenada": 0.1, "Tonga": 0.1, "Seychelles": 0.1, "Antigua and Barbuda": 0.1,
+  "Andorra": 0.08, "Dominica": 0.07, "Marshall Islands": 0.06, "Saint Kitts and Nevis": 0.06,
+  "Liechtenstein": 0.04, "Monaco": 0.04, "San Marino": 0.03, "Palau": 0.02,
+  "Tuvalu": 0.01, "Nauru": 0.01, "Vatican City": 0.0008
+};
+
+// Helper function to get country population (returns 0 if not found)
+function getCountryPopulation(country) {
+  // Handle special cases
+  if (country.includes("(")) {
+    const baseCountry = country.split("(")[0].trim();
+    return COUNTRY_POPULATION[baseCountry] || 0;
+  }
+  return COUNTRY_POPULATION[country] || 0;
+}
+
 // States/Provinces mapping for large countries by timezone offset
 const STATES_BY_TIMEZONE = {
   "-300": { // UTC-5 (Eastern Time)
@@ -53,19 +107,19 @@ const STATES_BY_TIMEZONE = {
     "Canada": ["Ontario", "Quebec", "Nunavut"]
   },
   "-360": { // UTC-6 (Central Time)
-    "United States": ["Alabama", "Arkansas", "Illinois", "Iowa", "Kansas", "Kentucky (western)", "Louisiana", "Minnesota", "Mississippi", "Missouri", "Nebraska (eastern)", "North Dakota (eastern)", "Oklahoma", "South Dakota (eastern)", "Tennessee (most)", "Texas (most)", "Wisconsin"],
-    "Canada": ["Manitoba", "Saskatchewan (most)", "Ontario (northwestern)", "Nunavut (central)"]
+    "United States": ["Illinois", "Kansas", "Kentucky", "Louisiana", "Minnesota", "Mississippi", "Tennessee", "Texas"],
+    "Canada": ["Manitoba", "Saskatchewan", "Ontario"]
   },
   "-420": { // UTC-7 (Mountain Time)
-    "United States": ["Arizona", "Colorado", "Idaho (southern)", "Montana", "Nebraska (western)", "Nevada (most)", "New Mexico", "North Dakota (western)", "Oregon (eastern)", "South Dakota (western)", "Utah", "Wyoming"],
-    "Canada": ["Alberta", "British Columbia (northeastern)", "Northwest Territories (most)", "Nunavut (western)", "Saskatchewan (western)"]
+    "United States": ["Arizona", "Colorado", "Montana",  "Nevada", "New Mexico",  "Utah"],
+    "Canada": ["Alberta", "British Columbia", "Northwest Territories", "Nunavut", "Saskatchewan"]
   },
   "-480": { // UTC-8 (Pacific Time)
-    "United States": ["California", "Idaho (northern)", "Nevada (western)", "Oregon (western)", "Washington"],
+    "United States": ["California", "Nevada", "Washington"],
     "Canada": ["British Columbia (most)", "Yukon"]
   },
   "-540": { // UTC-9 (Alaska Time)
-    "United States": ["Alaska (most)"]
+    "United States": ["Alaska"]
   },
   "-600": { // UTC-10 (Hawaii Time)
     "United States": ["Hawaii"]
@@ -141,9 +195,37 @@ function formatCountryWithStates(country, offsetMinutes) {
   return country;
 }
 
+// US Timezone names mapping
+const US_TIMEZONE_NAMES = {
+  "-300": "Eastern Standard Timezone",  // UTC-5
+  "-360": "Central Standard Timezone",  // UTC-6
+  "-420": "Mountain Standard Timezone", // UTC-7
+  "-480": "Pacific Standard Timezone",  // UTC-8
+  "-540": "Alaska Standard Timezone",   // UTC-9
+  "-600": "Hawaii Standard Timezone"    // UTC-10
+};
+
+// Helper function to get US timezone name for a given offset
+function getUSTimezoneName(offsetMinutes) {
+  const norm = normalizeOffset(offsetMinutes);
+  const offsetKey = norm.toString();
+  return US_TIMEZONE_NAMES[offsetKey] || null;
+}
+
 function getTimezoneInfo(offsetMinutes) {
   const norm = normalizeOffset(offsetMinutes);
   const found = TIMEZONES.find((tz) => tz.offsetMinutes === norm);
+  
+  // Always use UTC format for the main timezone label
+  let timezoneLabel = found ? found.label : null;
+  
+  if (!timezoneLabel) {
+    // Fallback to UTC format
+    const hours = norm / 60;
+    const sign = hours >= 0 ? "+" : "-";
+    const abs = Math.abs(hours);
+    timezoneLabel = abs === 0 ? "UTC" : `UTC${sign}${Number.isInteger(abs) ? abs : abs.toFixed(1)}`;
+  }
   
   if (found) {
     // Format countries with states for US, Canada, Australia
@@ -156,21 +238,15 @@ function getTimezoneInfo(offsetMinutes) {
     
     return {
       offsetMinutes: found.offsetMinutes,
-      label: found.label,
+      label: timezoneLabel,
       countries: formattedCountries,
       rawCountries: found.countries // Keep original for filtering
     };
   }
 
-  const hours = norm / 60;
-  const sign = hours >= 0 ? "+" : "-";
-  const abs = Math.abs(hours);
-  const label =
-    abs === 0 ? "UTC" : `UTC${sign}${Number.isInteger(abs) ? abs : abs.toFixed(1)}`;
-
   return {
     offsetMinutes: norm,
-    label,
+    label: timezoneLabel,
     countries: [],
     rawCountries: []
   };
@@ -267,7 +343,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "LOCAL_TIME_INFO" && sender.tab) {
     const tabId = sender.tab.id;
-    const { localTimeText, offsetMinutes, hours24, minutes } = message;
+    const { localTimeText, offsetMinutes, hours24, minutes, imageUrl, freelancerName } = message;
     const tz = getTimezoneInfo(offsetMinutes);
     
     getPreferredLocation().then(preferredLocation => {
@@ -283,7 +359,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         countries: tz.countries,
         rawCountries: tz.rawCountries || tz.countries,
         hasLocalTime: true,
-        isPreferredLocation: preferredLocation ? (tz.rawCountries || tz.countries).some(c => c.toLowerCase() === preferredLocation.toLowerCase()) : false
+        isPreferredLocation: preferredLocation ? (tz.rawCountries || tz.countries).some(c => c.toLowerCase() === preferredLocation.toLowerCase()) : false,
+        imageUrl: imageUrl || "",
+        freelancerName: freelancerName || ""
       };
       sendResponse({ status: "ok" });
     });
@@ -292,13 +370,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "NO_LOCAL_TIME" && sender.tab) {
     const tabId = sender.tab.id;
+    const { imageUrl, freelancerName } = message;
 
     tabTimeInfo[tabId] = {
       tabId,
       url: sender.tab.url,
       title: sender.tab.title,
       hasLocalTime: false,
-      isPreferredLocation: false
+      isPreferredLocation: false,
+      imageUrl: imageUrl || "",
+      freelancerName: freelancerName || ""
     };
 
     sendResponse({ status: "ok" });
@@ -317,7 +398,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               url: tab.url,
               title: tab.title,
               hasLocalTime: false,
-              isPreferredLocation: false
+              isPreferredLocation: false,
+              imageUrl: "",
+              freelancerName: ""
             };
           }
         });
@@ -356,7 +439,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "GET_COUNTRIES_FOR_TIMEZONE") {
     const countries = getCountriesForTimezone(message.offsetMinutes);
-    sendResponse({ countries });
+    // Sort by population (descending) and limit to top 10
+    const sortedCountries = countries
+      .map(country => ({
+        name: country,
+        population: getCountryPopulation(country)
+      }))
+      .sort((a, b) => b.population - a.population)
+      .slice(0, 10)
+      .map(item => item.name);
+    sendResponse({ countries: sortedCountries });
+    return true;
+  }
+
+  if (message.type === "GET_US_TIMEZONE_NAME") {
+    const timezoneName = getUSTimezoneName(message.offsetMinutes);
+    sendResponse({ timezoneName });
     return true;
   }
 

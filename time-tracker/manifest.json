@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Time Tracker",
+  "version": "1.0.0",
+  "description": "Track time day by day in Vladivostok timezone (7pm to 7pm)",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "storage"
+  ]
+}
+
