@@ -155,9 +155,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (message.isRunning === false) {
         startBtn.disabled = false;
         stopBtn.disabled = true;
+        // Clear process details if automation completed
+        if (message.status && message.status.includes('All URLs processed')) {
+          processDetails.innerHTML = '';
+        }
       }
     } else if (message.action === 'updateDetails') {
       addProcessLog(message.detail, message.type || 'info');
+    } else if (message.action === 'clearHistory') {
+      processDetails.innerHTML = '';
     }
   });
 

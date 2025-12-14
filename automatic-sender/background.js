@@ -82,8 +82,34 @@ async function processNextUrl() {
   if (!result.urls || result.urls.length === 0) {
     updateStatus('All URLs processed', false);
     updateDetails('✓ All URLs have been processed successfully!', 'success');
+    
+    // Stop automation
     isRunning = false;
     await chrome.storage.local.set({ isRunning: false });
+    
+    // Clear all active intervals
+    activeIntervals.forEach(intervalId => clearInterval(intervalId));
+    activeIntervals = [];
+    
+    // Clear process logs/history
+    await chrome.storage.local.set({ processLogs: [] });
+    updateDetails('📋 Process history cleared', 'info');
+    
+    // Send message to popup to clear history display
+    chrome.runtime.sendMessage({ action: 'clearHistory' }).catch(() => {
+      // Ignore errors if popup is closed
+    });
+    
+    // Close current tab if exists
+    if (currentTabId) {
+      try {
+        await chrome.tabs.remove(currentTabId);
+      } catch (error) {
+        // Tab might already be closed
+      }
+      currentTabId = null;
+    }
+    
     return;
   }
 
