@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automatic Sender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="panel">
+    <div class="card">
+      <header>
+        <div class="brand">
+          <img src="icon48.png" alt="Automatic Sender icon" />
+          <div>
+            <h1>Automatic Sender</h1>
+            <small>Automate sending messages to multiple URLs</small>
+          </div>
+        </div>
+      </header>
+
+      <section>
+        <label for="messages">Messages (one per line)</label>
+        <textarea id="messages" placeholder="Enter messages, one per line..."></textarea>
+        <div class="actions">
+          <div class="status" id="messagesStatus"></div>
+          <button id="saveMessages" class="primary">Save Messages</button>
+        </div>
+      </section>
+
+      <section>
+        <label for="urls">URLs (one per line)</label>
+        <textarea id="urls" placeholder="Enter URLs, one per line..."></textarea>
+        <div class="actions">
+          <div class="status" id="urlsStatus"></div>
+          <button id="saveUrls" class="primary">Save URLs</button>
+        </div>
+      </section>
+
+      <section>
+        <label for="timeBetweenMessages">Wait Time Between Messages (minutes)</label>
+        <input type="number" id="timeBetweenMessages" min="1" max="1440" value="5" style="width: 100%; padding: 8px; border: 1px solid rgba(21, 34, 56, 0.15); border-radius: 8px; font-size: 13px; margin-top: 6px;">
+        <div class="actions" style="margin-top: 10px;">
+          <div class="status" id="timeStatus"></div>
+          <button id="saveSettings" class="primary">Save Settings</button>
+        </div>
+      </section>
+
+      <section>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+          <input type="checkbox" id="skipHeyButton" style="width: 18px; height: 18px; cursor: pointer;">
+          <span>Skip clicking "👋 Hey" button</span>
+        </label>
+        <div class="hint" style="font-size: 11px; color: #5c6b82; margin-top: 4px;">
+          If enabled, the automation will skip clicking the "👋 Hey" button and go directly to the message box.
+        </div>
+      </section>
+
+      <section>
+        <div class="actions">
+          <button id="startBtn" class="primary" disabled>Start</button>
+          <button id="stopBtn" class="primary stop-btn" disabled>Stop</button>
+        </div>
+      </section>
+
+      <section>
+        <label>Current Status</label>
+        <div id="status" class="status-info"></div>
+      </section>
+
+      <section>
+        <label>Process Details</label>
+        <div id="processDetails" class="process-details"></div>
+      </section>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
+
