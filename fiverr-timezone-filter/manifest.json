@@ -9,7 +9,7 @@
     "48": "assets/icons/icon-48.png",
     "128": "assets/icons/icon-128.png"
   },
-  "permissions": ["tabs", "storage", "scripting", "clipboardRead"],
+  "permissions": ["tabs", "storage", "scripting", "clipboardRead", "sidePanel"],
   "host_permissions": [
     "https://pro.fiverr.com/freelancers/*"
   ],
@@ -24,7 +24,6 @@
     }
   ],
   "action": {
-    "default_popup": "popup/index.html",
     "default_title": "Fiverr Time Filter",
     "default_icon": {
       "16": "assets/icons/icon-16.png",
@@ -32,5 +31,8 @@
       "48": "assets/icons/icon-48.png",
       "128": "assets/icons/icon-128.png"
     }
+  },
+  "side_panel": {
+    "default_path": "popup/index.html"
   }
 }

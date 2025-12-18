@@ -6,19 +6,30 @@ body {
   font-family: system-ui, sans-serif;
   margin: 0;
   padding: 0;
-  width: 500px;
+  width: 100%;
+  min-width: 400px;
+  max-width: 600px;
   background: #f5f7fb;
   color: #152238;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .panel {
   box-sizing: border-box;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .card {
   background: #fff;
   box-shadow: 0 8px 24px rgba(21, 34, 56, 0.08);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100vh;
 }
 
 header {
@@ -99,10 +110,20 @@ header small {
 section {
   padding: 16px;
   border-bottom: 1px solid rgba(21, 34, 56, 0.06);
+  flex-shrink: 0;
+}
+
+section:first-of-type {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 section:last-of-type {
   border-bottom: none;
+  flex-shrink: 0;
 }
 
 label {
@@ -135,9 +156,11 @@ label {
 }
 
 #tabs-container {
-  max-height: 280px;
+  max-height: calc(100vh - 400px);
+  min-height: 200px;
   overflow-y: auto;
   margin-bottom: 12px;
+  flex: 1;
 }
 
 .tabs-action-buttons .icon-button.paste-tabs-button,
