@@ -2,6 +2,23 @@
 
 const tabTimeInfo = {};
 
+// Set side panel behavior immediately when service worker loads
+async function setupSidePanel() {
+  if (chrome.sidePanel) {
+    try {
+      await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+      console.log("Side panel behavior set successfully");
+    } catch (error) {
+      console.error("Error setting side panel behavior:", error);
+    }
+  } else {
+    console.warn("Side Panel API not available. Chrome version might be too old (requires Chrome 114+).");
+  }
+}
+
+// Setup side panel immediately
+setupSidePanel();
+
 // Countries by continent
 const COUNTRIES_BY_CONTINENT = {
   "Africa": [
@@ -353,8 +370,11 @@ function triggerRecheck(tabId) {
   });
 }
 
-// Inject content script into all existing Fiverr tabs on startup
-chrome.runtime.onStartup.addListener(() => {
+// Ensure side panel behavior is set on install/startup
+chrome.runtime.onInstalled.addListener(() => {
+  setupSidePanel();
+  
+  // Inject content script into all existing Fiverr tabs
   chrome.tabs.query({ url: "https://pro.fiverr.com/freelancers/*" }, (tabs) => {
     tabs.forEach((tab) => {
       triggerRecheck(tab.id);
@@ -362,13 +382,27 @@ chrome.runtime.onStartup.addListener(() => {
   });
 });
 
-// Also inject when extension is installed/reloaded
-chrome.runtime.onInstalled.addListener(() => {
+// Inject content script into all existing Fiverr tabs on startup
+chrome.runtime.onStartup.addListener(() => {
+  setupSidePanel();
+  
   chrome.tabs.query({ url: "https://pro.fiverr.com/freelancers/*" }, (tabs) => {
     tabs.forEach((tab) => {
       triggerRecheck(tab.id);
     });
   });
+});
+
+// Fallback: Explicitly open side panel when action is clicked
+// This ensures it works even if setPanelBehavior doesn't work
+chrome.action.onClicked.addListener(async (tab) => {
+  if (chrome.sidePanel) {
+    try {
+      await chrome.sidePanel.open({ tabId: tab.id });
+    } catch (error) {
+      console.error("Error opening side panel:", error);
+    }
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
