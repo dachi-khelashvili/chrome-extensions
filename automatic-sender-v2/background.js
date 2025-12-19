@@ -78,19 +78,34 @@ function updateDetails(detail, type = 'info') {
   });
 }
 
+// Get UTC timestamp (we'll convert to Vladivostok timezone when displaying)
+function getVladivostokTimestamp() {
+  // Store UTC timestamp, convert to Vladivostok timezone when displaying
+  return Date.now();
+}
+
+// Add history entry when URL is finished (success or failed)
 async function addHistoryEntry({ href, status, reason }) {
   try {
+    // Only add to history when finished (success or failed)
+    if (status !== 'success' && status !== 'failed' && status !== 'stopped') {
+      return;
+    }
+    
     const result = await safeStorageGet(['urlHistory']);
     const history = result.urlHistory || [];
+    
+    // Add new entry with completion timestamp
     history.unshift({
       url: href || '',
       status,
       reason: reason || '',
-      timestamp: Date.now()
+      timestamp: getVladivostokTimestamp() // Use completion time
     });
-    // Keep only last 100 entries
-    if (history.length > 100) {
-      history.splice(100);
+    
+    // Keep only last 1000 entries
+    if (history.length > 1000) {
+      history.splice(1000);
     }
     await safeStorageSet({ urlHistory: history });
     safeMessageSend({ action: 'updateHistory', history });
@@ -119,9 +134,9 @@ async function handleRedirect(url) {
   updateDetails('Redirected to inbox page. Closing tab and marking as failed.', 'error');
   await addHistoryEntry({
     href: url,
-          status: 'failed',
-          reason: 'Redirected to inbox page'
-        });
+    status: 'failed',
+    reason: 'Redirected to inbox page'
+  });
   await continueProcess();
 }
 
@@ -163,8 +178,6 @@ function waitForTabComplete(tabId) {
 
 async function waitForHumanVerification(tabId) {
   return new Promise((resolve) => {
-    const startTime = Date.now();
-    const maxWaitMs = 60 * 60 * 1000; // 10 minutes max
     let resolved = false;
 
     const intervalId = setInterval(async () => {
@@ -187,13 +200,7 @@ async function waitForHumanVerification(tabId) {
           resolve(true);
           return;
         }
-
-        if (Date.now() - startTime > maxWaitMs) {
-          clearInterval(intervalId);
-          activeIntervals.delete(intervalId);
-          updateDetails('Human verification not completed in time.', 'warning');
-          resolve(false);
-        }
+        // No time limit - wait indefinitely until verification is complete or process is stopped
       } catch (error) {
         console.error('Error checking tab title for human verification:', error);
         clearInterval(intervalId);
@@ -256,8 +263,8 @@ async function startProcess() {
 
   // Cache settings
   cachedSettings = {
-    minMinutes: result.minMinutes || (TIME_BETWEEN_MESSAGES / (60 * 1000)),
-    maxMinutes: result.maxMinutes || (TIME_BETWEEN_MESSAGES / (60 * 1000)),
+    minMinutes: result.minMinutes || 20,
+    maxMinutes: result.maxMinutes || 30,
     skipHeyButton: result.skipHeyButton || false,
     messages: result.messages
   };
@@ -270,25 +277,32 @@ async function startProcess() {
   processNextUrl();
 }
 
-function stopProcess() {
+async function stopProcess() {
   isRunning = false;
-  safeStorageSet({ isRunning: false });
+  await safeStorageSet({ isRunning: false });
   
   // Clear all active intervals
   activeIntervals.forEach(intervalId => clearInterval(intervalId));
   activeIntervals.clear();
   
-  // Clear process logs
-  safeStorageSet({ processLogs: [] });
+  // Add current URL to history if processing
+  if (currentProcessingUrl) {
+    await addHistoryEntry({
+      href: currentProcessingUrl,
+      status: 'stopped',
+      reason: 'Stopped by user'
+    });
+  }
   
   updateStatus('Process stopped', false);
-  updateDetails('🛑 Automation stopped by user. History cleared.', 'warning');
+  updateDetails('🛑 Automation stopped by user.', 'warning');
   
   if (currentTabId) {
     browserAPI.tabs.remove(currentTabId).catch(() => {});
     currentTabId = null;
   }
   
+  currentProcessingUrl = null;
   cachedSettings = null;
 }
 
@@ -364,7 +378,7 @@ async function processNextUrl() {
       safeMessageSend({
         action: 'timeline',
         step: 'open',
-        label: 'Opening URL & waiting',
+        label: `Opening URL & waiting - ${remaining}s left`,
         remainingSeconds: remaining
       });
       await sleep(1000);
@@ -373,6 +387,14 @@ async function processNextUrl() {
 
     if (!isRunning) {
       updateDetails('Process stopped by user', 'warning');
+      if (currentProcessingUrl) {
+        await addHistoryEntry({
+          href: currentProcessingUrl,
+          status: 'stopped',
+          reason: 'Stopped by user',
+          updateExisting: true
+        });
+      }
       return;
     }
 
@@ -401,32 +423,50 @@ async function processNextUrl() {
 
         if (!isRunning) {
           updateDetails('Process stopped by user during human verification.', 'warning');
+          if (currentProcessingUrl) {
+            await addHistoryEntry({
+              href: currentProcessingUrl,
+              status: 'stopped',
+              reason: 'Stopped by user during human verification'
+            });
+          }
           return;
         }
 
         if (!verificationResolved) {
-          updateDetails('Human verification not completed in time; skipping this URL and continuing to next.', 'warning');
+          updateDetails('Human verification not completed; skipping this URL and continuing to next.', 'warning');
           await addHistoryEntry({
             href: url,
             status: 'failed',
-            reason: 'Human verification not completed in time'
+            reason: 'Human verification not completed'
           });
           await continueProcess();
           return;
         }
 
         // After verification is resolved, wait 15 seconds
-        let hvRemain = 15;
+        let hvRemain = 5;
         while (hvRemain > 0 && isRunning) {
           updateDetails(`Human verification resolved, waiting ${hvRemain}s before continuing...`, 'info');
           safeMessageSend({
             action: 'timeline',
             step: 'open',
-            label: 'After human verification',
+            label: `After human verification - ${hvRemain}s left`,
             remainingSeconds: hvRemain
           });
           await sleep(1000);
           hvRemain -= 1;
+        }
+        
+        if (!isRunning) {
+          if (currentProcessingUrl) {
+            await addHistoryEntry({
+              href: currentProcessingUrl,
+              status: 'stopped',
+              reason: 'Stopped by user after human verification'
+            });
+          }
+          return;
         }
       }
     } catch (e) {
@@ -435,6 +475,13 @@ async function processNextUrl() {
 
     if (!isRunning) {
       updateDetails('Process stopped by user', 'warning');
+      if (currentProcessingUrl) {
+        await addHistoryEntry({
+          href: currentProcessingUrl,
+          status: 'stopped',
+          reason: 'Stopped by user'
+        });
+      }
       return;
     }
 
@@ -515,8 +562,8 @@ async function continueProcess() {
     maxMinutes = cachedSettings.maxMinutes;
   } else {
     const settings = await safeStorageGet(['minMinutes', 'maxMinutes']);
-    minMinutes = settings.minMinutes || (TIME_BETWEEN_MESSAGES / (60 * 1000));
-    maxMinutes = settings.maxMinutes || (TIME_BETWEEN_MESSAGES / (60 * 1000));
+    minMinutes = settings.minMinutes || 20;
+    maxMinutes = settings.maxMinutes || 30;
   }
   
   // Calculate random wait time
@@ -527,23 +574,31 @@ async function continueProcess() {
   
   updateDetails(`Waiting ${randomMinutes} minutes (random ${minMinutes}-${maxMinutes}) before next message...`, 'info');
   
-  const countdownInterval = setInterval(() => {
+  const countdownInterval = setInterval(async () => {
     if (!isRunning) {
       clearInterval(countdownInterval);
       activeIntervals.delete(countdownInterval);
       updateDetails('Process stopped during wait', 'warning');
+      if (currentProcessingUrl) {
+        await addHistoryEntry({
+          href: currentProcessingUrl,
+          status: 'stopped',
+          reason: 'Stopped by user during wait'
+        });
+      }
       return;
     }
     
     const remaining = Math.max(0, endTime - Date.now());
     const minutes = Math.floor(remaining / 60000);
     const seconds = Math.floor((remaining % 60000) / 1000);
+    const totalSeconds = Math.floor(remaining / 1000);
     updateStatus(`Waiting before next message... ${minutes}m ${seconds}s left`, true);
     safeMessageSend({
       action: 'timeline',
       step: 'wait',
-      label: 'Waiting before next message',
-      remainingSeconds: Math.floor(remaining / 1000)
+      label: `Waiting before next message - ${minutes}m ${seconds}s left`,
+      remainingSeconds: totalSeconds
     });
     
     if (remaining <= 0) {
@@ -749,33 +804,44 @@ function automatePage(messages, timeAfterContact, timeAfterHey, timeBeforeSend, 
                         type: 'success'
                   }).catch(() => {});
                   
-                  browserAPI.runtime.sendMessage({
+                  // Start countdown for waiting after send
+                  const waitAfterSendSeconds = timeAfterSend / 1000;
+                  let remainingAfterSend = waitAfterSendSeconds;
+                  
+                  const sendWaitInterval = setInterval(() => {
+                    if (browserAPI && browserAPI.runtime) {
+                      browserAPI.runtime.sendMessage({
                         action: 'timeline',
                         step: 'send',
-                        label: `Waiting ${timeAfterSend / 1000}s after sending`,
-                        remainingSeconds: timeAfterSend / 1000
+                        label: `Waiting ${remainingAfterSend}s after sending`,
+                        remainingSeconds: remainingAfterSend
                       }).catch(() => {});
-                }
-                      
-                      setTimeout(() => {
-                  if (browserAPI && browserAPI.runtime) {
-                    browserAPI.runtime.sendMessage({ 
+                    }
+                    
+                    remainingAfterSend -= 1;
+                    
+                    if (remainingAfterSend < 0) {
+                      clearInterval(sendWaitInterval);
+                      if (browserAPI && browserAPI.runtime) {
+                        browserAPI.runtime.sendMessage({ 
                           action: 'updateDetails',
                           detail: '✓ Message sending completed',
                           type: 'success'
-                    }).catch(() => {});
-                    
-                    browserAPI.runtime.sendMessage({
+                        }).catch(() => {});
+                        
+                        browserAPI.runtime.sendMessage({
                           action: 'urlResult',
                           status: 'success',
                           reason: 'Message sent successfully',
                           href: urlForHistory
-                    }).catch(() => {});
-                    
-                    browserAPI.runtime.sendMessage({ action: 'processComplete' }).catch(() => {});
-                  }
-                        resolve();
-                      }, timeAfterSend);
+                        }).catch(() => {});
+                        
+                        browserAPI.runtime.sendMessage({ action: 'processComplete' }).catch(() => {});
+                      }
+                      resolve();
+                    }
+                  }, 1000);
+                }
                     } else if (sendAttempts >= maxSendAttempts) {
                       clearInterval(findSendBtn);
                 
@@ -840,11 +906,27 @@ function automatePage(messages, timeAfterContact, timeAfterHey, timeBeforeSend, 
           if (checkInboxRedirect()) return;
         }, 500);
         
-        // Set up redirect monitoring during wait
+        // Set up redirect monitoring and countdown during wait
         let redirectCheckCount = 0;
         const maxRedirectChecks = Math.ceil(timeAfterContact / 1000);
+        const waitBeforeContactSeconds = timeAfterContact / 1000;
+        let remainingBeforeContact = waitBeforeContactSeconds;
+        
         const redirectCheckInterval = setInterval(() => {
           redirectCheckCount++;
+          
+          // Update timeline countdown
+          if (browserAPI && browserAPI.runtime && !skipHeyButton) {
+            browserAPI.runtime.sendMessage({
+              action: 'timeline',
+              step: 'prepare',
+              label: `Waiting ${remainingBeforeContact}s before clicking "👋 Hey"`,
+              remainingSeconds: remainingBeforeContact
+            }).catch(() => {});
+          }
+          
+          remainingBeforeContact -= 1;
+          
           if (checkInboxRedirect()) {
             clearInterval(redirectCheckInterval);
             return;
@@ -873,15 +955,6 @@ function automatePage(messages, timeAfterContact, timeAfterHey, timeBeforeSend, 
           }
           
           // Step 2: Find and click "👋 Hey" button
-          if (browserAPI && browserAPI.runtime) {
-            browserAPI.runtime.sendMessage({
-              action: 'timeline',
-              step: 'prepare',
-              label: `Waiting ${(timeAfterHey / 1000) || 0}s before clicking "👋 Hey"`,
-              remainingSeconds: Math.floor(timeAfterHey / 1000)
-            }).catch(() => {});
-          }
-          
           let heyButton = null;
           let attempts = 0;
           const maxAttempts = 10;

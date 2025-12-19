@@ -295,12 +295,36 @@ function renderHistory(items) {
     meta.className = 'history-meta';
     
     const statusSpan = document.createElement('span');
-    statusSpan.className = item.status === 'success' ? 'history-status-success' : 'history-status-failed';
-    statusSpan.textContent = item.status === 'success' ? 'Success' : 'Failed';
+    if (item.status === 'success') {
+      statusSpan.className = 'history-status-success';
+      statusSpan.textContent = 'Success';
+    } else if (item.status === 'stopped') {
+      statusSpan.className = 'history-status-stopped';
+      statusSpan.textContent = 'Stopped';
+    } else if (item.status === 'processing') {
+      statusSpan.className = 'history-status-processing';
+      statusSpan.textContent = 'Processing';
+    } else if (item.status === 'pending') {
+      statusSpan.className = 'history-status-pending';
+      statusSpan.textContent = 'Pending';
+    } else {
+      statusSpan.className = 'history-status-failed';
+      statusSpan.textContent = 'Failed';
+    }
     
     const timeSpan = document.createElement('span');
     const d = new Date(item.timestamp || Date.now());
-    timeSpan.textContent = d.toLocaleTimeString();
+    // Display in Vladivostok timezone
+    timeSpan.textContent = d.toLocaleString('en-US', { 
+      timeZone: 'Asia/Vladivostok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
     
     meta.appendChild(statusSpan);
     meta.appendChild(timeSpan);
@@ -352,7 +376,10 @@ function updateTimeline(stepId, label, remainingSeconds) {
   });
 
   if (label) {
-    const secondsText = typeof remainingSeconds === 'number'
+    // If label already contains countdown (like "5s" or "5s left"), use label as-is
+    // Otherwise append remainingSeconds if provided
+    const hasCountdown = /\d+s/.test(label);
+    const secondsText = (typeof remainingSeconds === 'number' && !hasCountdown)
       ? ` – ${remainingSeconds}s left`
       : '';
     elements.timelineInfo.textContent = `${label}${secondsText}`;
