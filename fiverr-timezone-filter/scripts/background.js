@@ -2,17 +2,42 @@
 
 const tabTimeInfo = {};
 
-// Set side panel behavior immediately when service worker loads
+// Get display mode preference (sidebar or popup)
+async function getDisplayMode() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["displayMode"], (result) => {
+      resolve(result.displayMode || "sidebar");
+    });
+  });
+}
+
+// Set display mode preference
+async function setDisplayMode(mode) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ displayMode: mode }, () => {
+      resolve();
+    });
+  });
+}
+
+// Set side panel behavior based on display mode
 async function setupSidePanel() {
-  if (chrome.sidePanel) {
+  const displayMode = await getDisplayMode();
+  
+  if (displayMode === "sidebar" && chrome.sidePanel) {
     try {
       await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
       console.log("Side panel behavior set successfully");
     } catch (error) {
       console.error("Error setting side panel behavior:", error);
     }
-  } else {
-    console.warn("Side Panel API not available. Chrome version might be too old (requires Chrome 114+).");
+  } else if (displayMode === "popup" && chrome.sidePanel) {
+    try {
+      await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+      console.log("Side panel behavior disabled (popup mode)");
+    } catch (error) {
+      console.error("Error disabling side panel behavior:", error);
+    }
   }
 }
 
@@ -393,14 +418,32 @@ chrome.runtime.onStartup.addListener(() => {
   });
 });
 
-// Fallback: Explicitly open side panel when action is clicked
-// This ensures it works even if setPanelBehavior doesn't work
+// Handle action click based on display mode
 chrome.action.onClicked.addListener(async (tab) => {
-  if (chrome.sidePanel) {
+  const displayMode = await getDisplayMode();
+  
+  if (displayMode === "popup") {
+    // Open as popup window
     try {
-      await chrome.sidePanel.open({ tabId: tab.id });
+      const url = chrome.runtime.getURL("popup/index.html");
+      await chrome.windows.create({
+        url: url,
+        type: "popup",
+        width: 520,
+        height: 600,
+        focused: true
+      });
     } catch (error) {
-      console.error("Error opening side panel:", error);
+      console.error("Error opening popup window:", error);
+    }
+  } else {
+    // Open side panel (fallback if setPanelBehavior didn't work)
+    if (chrome.sidePanel) {
+      try {
+        await chrome.sidePanel.open({ tabId: tab.id });
+      } catch (error) {
+        console.error("Error opening side panel:", error);
+      }
     }
   }
 });
@@ -539,6 +582,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_PREFERRED_LOCATION") {
     getPreferredLocation().then(preferredLocation => {
       sendResponse({ preferredLocation });
+    });
+    return true;
+  }
+
+  if (message.type === "GET_DISPLAY_MODE") {
+    getDisplayMode().then(displayMode => {
+      sendResponse({ displayMode });
+    });
+    return true;
+  }
+
+  if (message.type === "SET_DISPLAY_MODE") {
+    setDisplayMode(message.mode || "sidebar").then(() => {
+      setupSidePanel(); // Update side panel behavior
+      sendResponse({ status: "ok" });
     });
     return true;
   }

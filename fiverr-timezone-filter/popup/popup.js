@@ -1122,6 +1122,52 @@ document.addEventListener("DOMContentLoaded", async () => {
     syncTabs();
   });
 
+  // Display mode toggle button
+  const displayModeButton = document.getElementById("display-mode-button");
+  const displayModeIcon = document.getElementById("display-mode-icon");
+  
+  // Load current display mode and update icon
+  chrome.runtime.sendMessage({ type: "GET_DISPLAY_MODE" }, (response) => {
+    const displayMode = (!chrome.runtime.lastError && response?.displayMode) ? response.displayMode : "sidebar";
+    updateDisplayModeIcon(displayMode);
+  });
+  
+  function updateDisplayModeIcon(mode) {
+    if (mode === "popup") {
+      // Icon for popup mode (window icon) - shows we're in popup, click to switch to sidebar
+      displayModeIcon.innerHTML = `
+        <path d="M2 2h12v12H2V2zm1 1v10h10V3H3z" fill="currentColor"/>
+        <path d="M4 4h8v1H4V4zm0 2h8v1H4V6zm0 2h8v1H4V8zm0 2h5v1H4v-1z" fill="currentColor"/>
+      `;
+      displayModeButton.title = "Switch to sidebar mode";
+    } else {
+      // Icon for sidebar mode (sidebar icon with two panels) - shows we're in sidebar, click to switch to popup
+      displayModeIcon.innerHTML = `
+        <path d="M1 1h6v14H1V1zm1 1v12h4V2H2z" fill="currentColor"/>
+        <path d="M9 1h6v14H9V1zm1 1v12h4V2h-4z" fill="currentColor"/>
+        <path d="M3 3h2v1H3V3zm0 2h2v1H3V5zm0 2h2v1H3V7zm0 2h2v1H3V9z" fill="currentColor"/>
+      `;
+      displayModeButton.title = "Switch to popup mode";
+    }
+  }
+  
+  displayModeButton.addEventListener("click", () => {
+    chrome.runtime.sendMessage({ type: "GET_DISPLAY_MODE" }, (response) => {
+      const currentMode = (!chrome.runtime.lastError && response?.displayMode) ? response.displayMode : "sidebar";
+      const newMode = currentMode === "sidebar" ? "popup" : "sidebar";
+      
+      chrome.runtime.sendMessage({ type: "SET_DISPLAY_MODE", mode: newMode }, (response) => {
+        if (!chrome.runtime.lastError) {
+          updateDisplayModeIcon(newMode);
+          statusEl.textContent = `Switched to ${newMode} mode. Click extension icon to see the change.`;
+          setTimeout(() => {
+            statusEl.textContent = "";
+          }, 3000);
+        }
+      });
+    });
+  });
+
   // Set preferred location button
   const setLocationButton = document.getElementById("set-location-button");
   setLocationButton.addEventListener("click", () => {
