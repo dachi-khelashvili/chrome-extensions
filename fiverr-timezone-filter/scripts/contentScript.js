@@ -99,7 +99,55 @@
       }
     }
     
-    return { imageUrl, freelancerName };
+    // Extract location and languages
+    // Both use the same selector structure: span.xvxemck.y89fkm1gt.y89fkm1eb.y89fkm7.y89fkm2[data-track-tag="text"]
+    // First one is location, second one is languages
+    let location = "";
+    let locationText = "";
+    let languages = [];
+    let languagesText = "";
+    
+    // Find all matching elements
+    const allMatchingElements = document.querySelectorAll('span.xvxemck.y89fkm1gt.y89fkm1eb.y89fkm7.y89fkm2[data-track-tag="text"]');
+    
+    if (allMatchingElements.length >= 1) {
+      // First element is location
+      locationText = allMatchingElements[0].textContent.trim() || "";
+      location = locationText;
+    }
+    
+    if (allMatchingElements.length >= 2) {
+      // Second element is languages
+      languagesText = allMatchingElements[1].textContent.trim() || "";
+      if (languagesText) {
+        // Split by comma and trim each language
+        languages = languagesText.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0);
+      }
+    }
+    
+    // Fallback: if we didn't find using specific selector, try generic selector
+    if (locationText === "" && languages.length === 0) {
+      const allTrackTags = document.querySelectorAll('span[data-track-tag="text"]');
+      const texts = Array.from(allTrackTags).map(el => el.textContent.trim()).filter(text => text.length > 0);
+      
+      if (texts.length >= 1) {
+        // First one could be location
+        locationText = texts[0];
+        location = locationText;
+      }
+      
+      if (texts.length >= 2) {
+        // Second one could be languages
+        const secondText = texts[1];
+        // Check if it looks like a language list (contains comma-separated capitalized words)
+        if (secondText.includes(',')) {
+          languagesText = secondText;
+          languages = secondText.split(',').map(lang => lang.trim()).filter(lang => lang.length > 0);
+        }
+      }
+    }
+    
+    return { imageUrl, freelancerName, location, locationText, languages, languagesText };
   }
 
   function sendLocalTimeToBackground() {
@@ -112,7 +160,11 @@
         {
           type: "NO_LOCAL_TIME",
           imageUrl: freelancerInfo.imageUrl,
-          freelancerName: freelancerInfo.freelancerName
+          freelancerName: freelancerInfo.freelancerName,
+          location: freelancerInfo.location || "",
+          locationText: freelancerInfo.locationText || "",
+          languages: freelancerInfo.languages || [],
+          languagesText: freelancerInfo.languagesText || ""
         },
         () => {
           // ignore response
@@ -132,7 +184,11 @@
         minutes: parsed.minutes,
         offsetMinutes,
         imageUrl: freelancerInfo.imageUrl,
-        freelancerName: freelancerInfo.freelancerName
+        freelancerName: freelancerInfo.freelancerName,
+        location: freelancerInfo.location || "",
+        locationText: freelancerInfo.locationText || "",
+        languages: freelancerInfo.languages || [],
+        languagesText: freelancerInfo.languagesText || ""
       },
       () => {
         // ignore response

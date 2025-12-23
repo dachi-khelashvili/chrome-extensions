@@ -8,7 +8,6 @@ body {
   padding: 0;
   width: 100%;
   min-width: 400px;
-  max-width: 600px;
   background: #f5f7fb;
   color: #152238;
   height: 100vh;
@@ -199,6 +198,66 @@ label {
   font-size: 12px;
 }
 
+.tabs-table thead {
+  background-color: rgba(21, 34, 56, 0.05);
+  border-bottom: 2px solid rgba(21, 34, 56, 0.15);
+}
+
+.table-header-row {
+  border-bottom: 2px solid rgba(21, 34, 56, 0.15);
+}
+
+.table-header-row th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  color: #5c6b82;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+
+.table-header-row th.col-header-number {
+  width: 20px;
+  min-width: 20px;
+  text-align: center;
+  padding: 8px 4px !important;
+}
+
+.table-header-row th.col-header-image {
+  width: 50px;
+  text-align: center;
+  padding: 6px !important;
+}
+
+.table-header-row th.col-header-name {
+  width: 80px;
+  min-width: 80px;
+}
+
+.table-header-row th.col-header-time {
+  width: 60px;
+  min-width: 60px;
+}
+
+.table-header-row th.col-header-status {
+  width: 100px;
+  min-width: 100px;
+}
+
+.table-header-row th.col-header-languages {
+  width: 120px;
+  min-width: 120px;
+}
+
+.table-header-row th.col-header-actions {
+  width: 40px;
+  min-width: 40px;
+  text-align: center;
+  padding: 6px !important;
+}
+
 .tab-row {
   border-bottom: 1px solid rgba(21, 34, 56, 0.08);
   cursor: pointer;
@@ -281,6 +340,17 @@ label {
   width: 100px;
   min-width: 100px;
   color: #5c6b82;
+}
+
+.col-languages {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  color: #152238;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .col-actions {

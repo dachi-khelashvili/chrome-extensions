@@ -6,7 +6,7 @@ const tabTimeInfo = {};
 async function getDisplayMode() {
   return new Promise((resolve) => {
     chrome.storage.local.get(["displayMode"], (result) => {
-      resolve(result.displayMode || "sidebar");
+      resolve(result.displayMode || "popup");
     });
   });
 }
@@ -351,6 +351,22 @@ function getPreferredLocation() {
   });
 }
 
+function getLanguageCountThreshold() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["languageCountThreshold"], (result) => {
+      resolve(result.languageCountThreshold !== undefined ? result.languageCountThreshold : 3);
+    });
+  });
+}
+
+function setLanguageCountThreshold(threshold) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ languageCountThreshold: threshold }, () => {
+      resolve();
+    });
+  });
+}
+
 function setPreferredLocation(country) {
   return new Promise((resolve) => {
     chrome.storage.local.set({ preferredLocation: country }, () => {
@@ -451,7 +467,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "LOCAL_TIME_INFO" && sender.tab) {
     const tabId = sender.tab.id;
-    const { localTimeText, offsetMinutes, hours24, minutes, imageUrl, freelancerName } = message;
+    const { localTimeText, offsetMinutes, hours24, minutes, imageUrl, freelancerName, location, locationText, languages, languagesText } = message;
     const tz = getTimezoneInfo(offsetMinutes);
     
     getPreferredLocation().then(preferredLocation => {
@@ -469,7 +485,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         hasLocalTime: true,
         isPreferredLocation: preferredLocation ? ((tz.rawCountries && tz.rawCountries.length > 0 ? tz.rawCountries : tz.countries) || []).some(c => matchesPreferredLocation(c, preferredLocation)) : false,
         imageUrl: imageUrl || "",
-        freelancerName: freelancerName || ""
+        freelancerName: freelancerName || "",
+        location: location || "",
+        locationText: locationText || "",
+        languages: languages || [],
+        languagesText: languagesText || "",
+        languageCount: (languages || []).length
       };
       sendResponse({ status: "ok" });
     });
@@ -478,7 +499,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "NO_LOCAL_TIME" && sender.tab) {
     const tabId = sender.tab.id;
-    const { imageUrl, freelancerName } = message;
+    const { imageUrl, freelancerName, location, locationText, languages, languagesText } = message;
 
     tabTimeInfo[tabId] = {
       tabId,
@@ -487,7 +508,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hasLocalTime: false,
       isPreferredLocation: false,
       imageUrl: imageUrl || "",
-      freelancerName: freelancerName || ""
+      freelancerName: freelancerName || "",
+      location: location || "",
+      locationText: locationText || "",
+      languages: languages || [],
+      languagesText: languagesText || "",
+      languageCount: (languages || []).length
     };
 
     sendResponse({ status: "ok" });
@@ -508,7 +534,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               hasLocalTime: false,
               isPreferredLocation: false,
               imageUrl: "",
-              freelancerName: ""
+              freelancerName: "",
+              location: "",
+              locationText: "",
+              languages: [],
+              languagesText: "",
+              languageCount: 0
             };
           }
         });
@@ -633,7 +664,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "CLOSE_TABS_NOT_IN_PREFERRED_LOCATION") {
-    getPreferredLocation().then(preferredLocation => {
+    Promise.all([getPreferredLocation(), getLanguageCountThreshold()]).then(([preferredLocation, languageThreshold]) => {
       if (!preferredLocation) {
         sendResponse({ closed: 0 });
         return;
@@ -644,7 +675,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       for (const [tabIdStr, info] of Object.entries(tabTimeInfo)) {
         // Close tabs that are NOT in preferred location
         // This includes tabs with no local time and tabs not matching preferred location
-        if (!info.isPreferredLocation) {
+        // Also close tabs with language count > threshold
+        const shouldClose = !info.isPreferredLocation || 
+                           (info.languageCount !== undefined && info.languageCount > languageThreshold);
+        
+        if (shouldClose) {
           toClose.push(Number(tabIdStr));
         }
       }
@@ -660,6 +695,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ closed: 0 });
       }
     });
+    return true;
+  }
+
+  if (message.type === "GET_LANGUAGE_COUNT_THRESHOLD") {
+    getLanguageCountThreshold().then(threshold => {
+      sendResponse({ threshold });
+    });
+    return true;
+  }
+
+  if (message.type === "SET_LANGUAGE_COUNT_THRESHOLD") {
+    const threshold = parseInt(message.threshold, 10);
+    if (!isNaN(threshold) && threshold >= 0) {
+      setLanguageCountThreshold(threshold).then(() => {
+        sendResponse({ status: "ok" });
+      });
+    } else {
+      sendResponse({ status: "error", message: "Invalid threshold value" });
+    }
     return true;
   }
 

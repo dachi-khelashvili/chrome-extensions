@@ -52,6 +52,18 @@
               </select>
               <button type="button" id="set-location-button" class="set-location-button" title="Set preferred location">Set</button>
             </div>
+            <label for="language-threshold-input">Max languages threshold (close tabs with more):</label>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
+              <input
+                type="number"
+                id="language-threshold-input"
+                min="0"
+                max="20"
+                value="3"
+                style="flex: 1; margin-bottom: 0; padding: 6px 8px; border: 1px solid rgba(21, 34, 56, 0.15); border-radius: 4px; font-size: 13px;"
+              />
+              <button type="button" id="set-language-threshold-button" class="set-location-button" title="Set language count threshold">Set</button>
+            </div>
             <button type="submit" id="close-button" class="primary">Close other tabs</button>
           </form>
           <div id="status" class="status"></div>

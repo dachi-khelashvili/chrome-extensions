@@ -644,7 +644,7 @@ function createCloseButton(tabs) {
   return closeButton;
 }
 
-function renderTabs(tabs) {
+async function renderTabs(tabs) {
   const container = document.getElementById("tabs-container");
   const statusText = document.getElementById("tabs-status-text");
   const buttonGroup = document.getElementById("tabs-action-buttons");
@@ -669,9 +669,32 @@ function renderTabs(tabs) {
     return;
   }
 
+  // Get language threshold once for all rows
+  const threshold = await new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "GET_LANGUAGE_COUNT_THRESHOLD" }, (response) => {
+      resolve((!chrome.runtime.lastError && response?.threshold !== undefined) ? response.threshold : 3);
+    });
+  });
+
   // Create table
   const table = document.createElement("table");
   table.className = "tabs-table";
+
+  // Create table header
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  headerRow.className = "table-header-row";
+  
+  const headers = ["#", "", "Name", "Time", "Status", "Languages", ""];
+  headers.forEach((headerText, idx) => {
+    const th = document.createElement("th");
+    th.textContent = headerText;
+    th.className = `col-header-${idx === 0 ? 'number' : idx === 1 ? 'image' : idx === 2 ? 'name' : idx === 3 ? 'time' : idx === 4 ? 'status' : idx === 5 ? 'languages' : 'actions'}`;
+    headerRow.appendChild(th);
+  });
+  
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
 
   tabs.forEach((info, index) => {
     const row = document.createElement("tr");
@@ -700,7 +723,7 @@ function renderTabs(tabs) {
       preferredStatus = "No local time";
     }
 
-    // Create cells: Number | Image | Name | Local Time | Preferred Status | Actions
+    // Create cells: Number | Image | Name | Local Time | Preferred Status | Languages | Actions
     const cell1 = document.createElement("td");
     cell1.textContent = number;
     cell1.className = "col-number";
@@ -784,6 +807,30 @@ function renderTabs(tabs) {
       }
     }
 
+    // Create languages cell
+    const cellLanguages = document.createElement("td");
+    cellLanguages.className = "col-languages";
+    
+    const languageCount = info.languageCount || 0;
+    const languagesText = info.languagesText || info.languages?.join(", ") || "";
+    
+    if (languagesText) {
+      cellLanguages.textContent = languagesText;
+      cellLanguages.title = `${languageCount} language(s)`;
+      
+      // If language count exceeds threshold, show in red
+      if (languageCount > threshold) {
+        cellLanguages.style.color = "#dc3545";
+        cellLanguages.style.fontWeight = "600";
+      } else {
+        cellLanguages.style.color = "#152238";
+        cellLanguages.style.fontWeight = "normal";
+      }
+    } else {
+      cellLanguages.textContent = "—";
+      cellLanguages.style.color = "#999";
+    }
+
     // Create actions cell with close button only
     const cellActions = document.createElement("td");
     cellActions.className = "col-actions";
@@ -823,6 +870,7 @@ function renderTabs(tabs) {
     row.appendChild(cellName);
     row.appendChild(cell2);
     row.appendChild(cell3);
+    row.appendChild(cellLanguages);
     row.appendChild(cellActions);
 
     table.appendChild(row);
@@ -832,7 +880,7 @@ function renderTabs(tabs) {
       const expandRow = document.createElement("tr");
       expandRow.className = "expand-row";
       const expandCell = document.createElement("td");
-      expandCell.colSpan = 6;
+      expandCell.colSpan = 7;
       expandCell.className = "expand-content";
 
       // Get preferred location and show countries in this timezone organized by continent
@@ -1027,7 +1075,7 @@ function renderTabs(tabs) {
         } else {
           expandedRows.add(info.tabId);
         }
-        renderTabs(tabs);
+        renderTabs(tabs).catch(err => console.error("Error rendering tabs:", err));
       });
     }
   });
@@ -1038,16 +1086,16 @@ function renderTabs(tabs) {
 function loadTabs() {
   return new Promise(async (resolve) => {
     await getCountriesByContinent();
-    chrome.runtime.sendMessage({ type: "GET_TABS_TIME_INFO" }, (response) => {
+    chrome.runtime.sendMessage({ type: "GET_TABS_TIME_INFO" }, async (response) => {
       if (chrome.runtime.lastError) {
-        renderTabs([]);
+        await renderTabs([]);
         const container = document.getElementById("tabs-container");
         container.textContent = "Error loading tabs.";
         resolve([]);
         return;
       }
       const tabs = response?.tabs || [];
-      renderTabs(tabs);
+      await renderTabs(tabs);
       resolve(tabs);
     });
   });
@@ -1085,6 +1133,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     populateCountrySelect(countrySelect, preferredLocation);
   });
 
+  // Load language threshold and populate input
+  const languageThresholdInput = document.getElementById("language-threshold-input");
+  chrome.runtime.sendMessage({ type: "GET_LANGUAGE_COUNT_THRESHOLD" }, (response) => {
+    const threshold = (!chrome.runtime.lastError && response?.threshold !== undefined) ? response.threshold : 3;
+    languageThresholdInput.value = threshold;
+  });
+
   async function syncTabs() {
     if (recheckButton.disabled) return;
 
@@ -1098,8 +1153,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? `Collecting local times from ${tabCount} tab(s)...`
         : "No Fiverr tabs detected.";
 
-      const waitTime = tabCount ? Math.min(400 + tabCount * 60, 1500) : 250;
-      await wait(waitTime);
       await loadTabs();
       statusEl.textContent = "";
     } catch (error) {
@@ -1111,7 +1164,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Initialize buttons immediately (even with no tabs)
-  renderTabs([]);
+  await renderTabs([]);
   
   // Show cached data immediately if available, then refresh in background
   await getCountriesByContinent();
@@ -1203,6 +1256,45 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Clear status message after 2 seconds
         setTimeout(() => {
           if (statusEl.textContent === `Preferred location set to: ${country}`) {
+            statusEl.textContent = "";
+          }
+        }, 2000);
+      }
+    );
+  });
+
+  // Set language threshold button
+  const setLanguageThresholdButton = document.getElementById("set-language-threshold-button");
+  setLanguageThresholdButton.addEventListener("click", () => {
+    const threshold = parseInt(languageThresholdInput.value, 10);
+
+    if (isNaN(threshold) || threshold < 0) {
+      statusEl.textContent = "Please enter a valid number (0 or greater).";
+      return;
+    }
+
+    statusEl.textContent = "Setting language threshold...";
+
+    // Save language threshold
+    chrome.runtime.sendMessage(
+      {
+        type: "SET_LANGUAGE_COUNT_THRESHOLD",
+        threshold
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          statusEl.textContent = "Error setting language threshold.";
+          return;
+        }
+        
+        statusEl.textContent = `Language threshold set to: ${threshold}`;
+        
+        // Refresh tab list to show updated language colors
+        loadTabs().catch(err => console.error("Error loading tabs:", err));
+        
+        // Clear status message after 2 seconds
+        setTimeout(() => {
+          if (statusEl.textContent === `Language threshold set to: ${threshold}`) {
             statusEl.textContent = "";
           }
         }, 2000);
