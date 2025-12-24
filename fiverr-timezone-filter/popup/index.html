@@ -1,76 +1,95 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Fiverr Time Filter</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <div class="panel">
-      <div class="card">
-        <header>
-          <div class="brand">
-            <img src="../assets/icons/icon-48.png" alt="Fiverr Time Filter icon" />
-            <div>
-              <h1>Fiverr Local Times</h1>
-              <small>Filter freelancers by timezone and location</small>
-            </div>
-          </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="button" id="display-mode-button" class="icon-button" title="Switch between popup and sidebar mode">
-              <svg id="display-mode-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1 1h6v14H1V1zm1 1v12h4V2H2z" fill="currentColor"/>
-                <path d="M9 1h6v14H9V1zm1 1v12h4V2h-4z" fill="currentColor"/>
-                <path d="M3 3h2v1H3V3zm0 2h2v1H3V5zm0 2h2v1H3V7zm0 2h2v1H3V9z" fill="currentColor"/>
-              </svg>
-            </button>
-            <button type="button" id="recheck-button" class="icon-button" title="Recheck tabs">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13.65 2.35C12.2 0.9 10.2 0 8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C11.73 16 14.84 13.45 15.73 10H13.65C12.83 12.33 10.61 14 8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C9.66 2 11.14 2.69 12.22 3.78L9 7H16V0L13.65 2.35Z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-        </header>
 
-        <section>
-          <div id="tabs-header" class="tabs-header">
-            <span id="tabs-status-text" class="tabs-status-text">No Fiverr tabs found.</span>
-            <div id="tabs-action-buttons" class="tabs-action-buttons"></div>
-          </div>
-          <div id="tabs-container"></div>
-        </section>
+<head>
+  <meta charset="UTF-8" />
+  <title>Fiverr Time Filter</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
 
-        <section>
-          <form id="filter-form">
+<body>
+  <div class="panel">
+    <div class="card">
+      <header>
+        <div class="brand">
+          <img src="../assets/icons/icon-48.png" alt="Fiverr Time Filter icon" />
+          <div>
+            <h1>Fiverr Local Times</h1>
+            <small>Filter freelancers by timezone and location</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="display-mode-button" class="icon-button"
+            title="Switch between popup and sidebar mode">
+            <svg id="display-mode-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"
+              xmlns="http://www.w3.org/2000/svg">
+              <path d="M1 1h6v14H1V1zm1 1v12h4V2H2z" fill="currentColor" />
+              <path d="M9 1h6v14H9V1zm1 1v12h4V2h-4z" fill="currentColor" />
+              <path d="M3 3h2v1H3V3zm0 2h2v1H3V5zm0 2h2v1H3V7zm0 2h2v1H3V9z" fill="currentColor" />
+            </svg>
+          </button>
+          <button type="button" id="recheck-button" class="icon-button" title="Recheck tabs">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M13.65 2.35C12.2 0.9 10.2 0 8 0C3.58 0 0 3.58 0 8C0 12.42 3.58 16 8 16C11.73 16 14.84 13.45 15.73 10H13.65C12.83 12.33 10.61 14 8 14C4.69 14 2 11.31 2 8C2 4.69 4.69 2 8 2C9.66 2 11.14 2.69 12.22 3.78L9 7H16V0L13.65 2.35Z"
+                fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section>
+        <div id="tabs-header" class="tabs-header">
+          <span id="tabs-status-text" class="tabs-status-text">No Fiverr tabs found.</span>
+          <div id="tabs-action-buttons" class="tabs-action-buttons"></div>
+        </div>
+        <div id="tabs-container"></div>
+      </section>
+
+      <section>
+        <form id="filter-form">
+          <div class="form-group">
             <label for="country-select">Preferred location (for filtering):</label>
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
-              <select
-                id="country-select"
-                style="flex: 1; margin-bottom: 0;"
-              >
+              <select id="country-select" style="flex: 1; margin-bottom: 0;">
                 <option value="">Select a country...</option>
               </select>
-              <button type="button" id="set-location-button" class="set-location-button" title="Set preferred location">Set</button>
+              <button type="button" id="set-location-button" class="set-location-button"
+                title="Set preferred location">Set</button>
             </div>
+          </div>
+          <div class="form-group">
             <label for="language-threshold-input">Max languages threshold (close tabs with more):</label>
             <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
-              <input
-                type="number"
-                id="language-threshold-input"
-                min="0"
-                max="20"
-                value="3"
-                style="flex: 1; margin-bottom: 0; padding: 6px 8px; border: 1px solid rgba(21, 34, 56, 0.15); border-radius: 4px; font-size: 13px;"
-              />
-              <button type="button" id="set-language-threshold-button" class="set-location-button" title="Set language count threshold">Set</button>
+              <input type="number" id="language-threshold-input" min="0" max="20" value="3"
+                style="flex: 1; margin-bottom: 0; padding: 6px 8px; border: 1px solid rgba(21, 34, 56, 0.15); border-radius: 4px; font-size: 13px;" />
+              <button type="button" id="set-language-threshold-button" class="set-location-button"
+                title="Set language count threshold">Set</button>
             </div>
-            <button type="submit" id="close-button" class="primary">Close other tabs</button>
-          </form>
-          <div id="status" class="status"></div>
-        </section>
-      </div>
+          </div>
+          <div class="form-group">
+            <label>Image size:</label>
+            <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
+              <button type="button" id="zoom-out-image-button" class="icon-button" title="Zoom out (decrease image size)">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <button type="button" id="zoom-in-image-button" class="icon-button" title="Zoom in (increase image size)">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" id="close-button" class="primary" style="grid-column: span 3;">Close other tabs</button>
+        </form>
+        <div id="status" class="status"></div>
+      </section>
     </div>
+  </div>
 
-    <script src="popup.js"></script>
-  </body>
+  <script src="popup.js"></script>
+</body>
+
 </html>

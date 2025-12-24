@@ -367,6 +367,29 @@ function setLanguageCountThreshold(threshold) {
   });
 }
 
+function getImageSize() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["imageSize"], (result) => {
+      // Default to 40px if not set
+      const defaultSize = 40;
+      const validSizes = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 240];
+      const savedSize = result.imageSize !== undefined ? result.imageSize : defaultSize;
+      // If saved size is not in the list, find the closest valid size
+      const size = validSizes.includes(savedSize) ? savedSize : 
+        validSizes.reduce((prev, curr) => Math.abs(curr - savedSize) < Math.abs(prev - savedSize) ? curr : prev);
+      resolve(size);
+    });
+  });
+}
+
+function setImageSize(size) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ imageSize: size }, () => {
+      resolve();
+    });
+  });
+}
+
 function setPreferredLocation(country) {
   return new Promise((resolve) => {
     chrome.storage.local.set({ preferredLocation: country }, () => {
@@ -713,6 +736,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     } else {
       sendResponse({ status: "error", message: "Invalid threshold value" });
+    }
+    return true;
+  }
+
+  if (message.type === "GET_IMAGE_SIZE") {
+    getImageSize().then(size => {
+      sendResponse({ size });
+    });
+    return true;
+  }
+
+  if (message.type === "SET_IMAGE_SIZE") {
+    const size = parseInt(message.size, 10);
+    const validSizes = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 240];
+    if (!isNaN(size) && validSizes.includes(size)) {
+      setImageSize(size).then(() => {
+        sendResponse({ status: "ok" });
+      });
+    } else {
+      sendResponse({ status: "error", message: "Invalid image size value (must be one of: 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 240)" });
     }
     return true;
   }

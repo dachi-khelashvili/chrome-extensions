@@ -137,7 +137,6 @@ label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid rgba(21, 34, 56, 0.08);
 }
@@ -158,7 +157,6 @@ label {
   max-height: calc(100vh - 400px);
   min-height: 200px;
   overflow-y: auto;
-  margin-bottom: 12px;
   flex: 1;
 }
 
@@ -450,9 +448,10 @@ label {
 }
 
 .row-action-button.close-row-button {
-  width: 28px;
-  height: 28px;
-  padding: 6px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 8px;
+  border-radius: 50%;
 }
 
 .row-action-button.close-row-button svg {
@@ -662,6 +661,28 @@ button.primary:active {
 
 #status:empty {
   display: none;
+}
+
+form {
+  display: grid;
+  grid-template-columns: 1fr 1fr fit-content(100%);
+  width: 100%;
+  gap: 12px;
+}
+
+form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#zoom-in-image-button {
+  background-color: #1f74ff;
+}
+
+#zoom-out-image-button {
+  background-color: #1f74ff;
 }
 
 /* Scrollbar styling */
