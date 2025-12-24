@@ -12,10 +12,12 @@ const saveConfigButton = document.getElementById('saveConfigButton');
 const configStatus = document.getElementById('configStatus');
 const manualTodoUrls = document.getElementById('manualTodoUrls');
 const saveTodoButton = document.getElementById('saveTodoButton');
+const copyAllTodoButton = document.getElementById('copyAllTodoButton');
 const processTodoButton = document.getElementById('processTodoButton');
 const todoCount = document.getElementById('todoCount');
 const manualFinalUrls = document.getElementById('manualFinalUrls');
 const saveFinalButton = document.getElementById('saveFinalButton');
+const copyAllFinalButton = document.getElementById('copyAllFinalButton');
 const scanFinalButton = document.getElementById('scanFinalButton');
 const finalCount = document.getElementById('finalCount');
 const finalNumber = document.getElementById('finalNumber');
@@ -1218,6 +1220,56 @@ async function removeUrlsFromTodo(urlsToRemove) {
   }
 }
 
+// Copy all todo URLs button
+copyAllTodoButton.addEventListener('click', async () => {
+  try {
+    copyAllTodoButton.disabled = true;
+    copyAllTodoButton.textContent = 'Copying...';
+    
+    const allUrls = await getTodoUrlsFromGist();
+    
+    if (allUrls.length === 0) {
+      alert('No URLs in todo list.');
+      return;
+    }
+    
+    const textToCopy = allUrls.join('\n');
+    await navigator.clipboard.writeText(textToCopy);
+    alert(`Copied ${allUrls.length} URL(s) to clipboard!`);
+  } catch (error) {
+    console.error('Error copying all todo URLs:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    copyAllTodoButton.disabled = false;
+    copyAllTodoButton.textContent = 'Copy All Todo URLs';
+  }
+});
+
+// Copy all todo URLs button
+copyAllTodoButton.addEventListener('click', async () => {
+  try {
+    copyAllTodoButton.disabled = true;
+    copyAllTodoButton.textContent = 'Copying...';
+    
+    const allUrls = await getTodoUrlsFromGist();
+    
+    if (allUrls.length === 0) {
+      alert('No URLs in todo list.');
+      return;
+    }
+    
+    const textToCopy = allUrls.join('\n');
+    await navigator.clipboard.writeText(textToCopy);
+    alert(`Copied ${allUrls.length} URL(s) to clipboard!`);
+  } catch (error) {
+    console.error('Error copying all todo URLs:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    copyAllTodoButton.disabled = false;
+    copyAllTodoButton.textContent = 'Copy All Todo URLs';
+  }
+});
+
 // Save manual todo URLs button
 saveTodoButton.addEventListener('click', async () => {
   const inputText = manualTodoUrls.value.trim();
@@ -1527,7 +1579,32 @@ async function removeUrlsFromFinal(urlsToRemove) {
   }
 }
 
-// Copy final URLs button
+// Copy all final URLs button
+copyAllFinalButton.addEventListener('click', async () => {
+  try {
+    copyAllFinalButton.disabled = true;
+    copyAllFinalButton.textContent = 'Copying...';
+    
+    const allUrls = await getFinalUrlsFromGist();
+    
+    if (allUrls.length === 0) {
+      alert('No URLs in final list.');
+      return;
+    }
+    
+    const textToCopy = allUrls.join('\n');
+    await navigator.clipboard.writeText(textToCopy);
+    alert(`Copied ${allUrls.length} URL(s) to clipboard!`);
+  } catch (error) {
+    console.error('Error copying all final URLs:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    copyAllFinalButton.disabled = false;
+    copyAllFinalButton.textContent = 'Copy All Final URLs';
+  }
+});
+
+// Copy final URLs button (limited by count)
 copyFinalButton.addEventListener('click', async () => {
   try {
     copyFinalButton.disabled = true;
