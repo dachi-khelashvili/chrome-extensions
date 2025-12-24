@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiverr URL Finder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Fiverr URL Finder</h1>
+    
+    <div class="section">
+      <button id="scanButton" class="btn btn-primary">Scan All Tabs</button>
+    </div>
+
+    <div class="section">
+      <h2>Manual URL Input</h2>
+      <textarea id="manualUrls" placeholder="Enter URLs (one per line)"></textarea>
+      <button id="saveManualButton" class="btn btn-secondary">Save URLs</button>
+    </div>
+
+    <div class="section">
+      <h2>New URLs Found</h2>
+      <div id="newUrlsContainer">
+        <p class="no-urls">No new URLs yet</p>
+      </div>
+      <button id="copyNewButton" class="btn btn-success" style="display: none;">Copy New URLs</button>
+    </div>
+
+    <div class="section">
+      <h2>All URLs</h2>
+      <p id="totalCount">Total URLs in storage: 0</p>
+      <button id="copyAllButton" class="btn btn-info">Copy All URLs</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+

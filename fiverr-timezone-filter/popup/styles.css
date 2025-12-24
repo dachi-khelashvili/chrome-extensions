@@ -154,7 +154,7 @@ label {
 }
 
 #tabs-container {
-  max-height: calc(100vh - 400px);
+  max-height: calc(100vh - 300px);
   min-height: 200px;
   overflow-y: auto;
   flex: 1;
@@ -580,13 +580,13 @@ label {
 #country-select {
   width: 100%;
   box-sizing: border-box;
-  padding: 10px;
+  padding: 0px 8px;
+  height: 32px;
   font-size: 13px;
   border-radius: 8px;
   border: 1px solid rgba(21, 34, 56, 0.15);
   background: #fdfefe;
   color: #152238;
-  margin-bottom: 12px;
   font-family: system-ui, sans-serif;
 }
 
@@ -610,7 +610,8 @@ label {
   border: none;
   color: #fff;
   border-radius: 8px;
-  padding: 10px 20px;
+  padding: 0px 16px;
+  height: 32px;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.2s ease;
@@ -674,15 +675,22 @@ form .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 12px;
 }
 
 #zoom-in-image-button {
   background-color: #1f74ff;
+  margin: 0;
+  padding: 0px 8px;
+  height: 32px;
+  border-radius: 50%;
 }
 
 #zoom-out-image-button {
   background-color: #1f74ff;
+  margin: 0;
+  padding: 0px 8px;
+  height: 32px;
+  border-radius: 50%;
 }
 
 /* Scrollbar styling */

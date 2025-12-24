@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Fiverr URL Finder",
+  "version": "1.0.0",
+  "description": "Find and collect Fiverr profile URLs from all browser tabs",
+  "permissions": [
+    "tabs",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.fiverr.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.fiverr.com/*"],
+      "js": ["content.js"]
+    }
+  ]
+}
+
