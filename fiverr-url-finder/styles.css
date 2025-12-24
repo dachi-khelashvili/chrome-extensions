@@ -138,6 +138,36 @@ textarea:focus {
   margin-bottom: 10px;
 }
 
+.input-field {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 10px;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #1dbf73;
+}
+
+.status-text {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+  min-height: 16px;
+}
+
+.status-text.success {
+  color: #10b981;
+}
+
+.status-text.error {
+  color: #ef4444;
+}
+
 /* Scrollbar styling */
 #newUrlsContainer::-webkit-scrollbar {
   width: 6px;

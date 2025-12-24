@@ -9,7 +9,8 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://*.fiverr.com/*"
+    "https://*.fiverr.com/*",
+    "https://api.github.com/*"
   ],
   "action": {
     "default_popup": "popup.html"

@@ -11,27 +11,35 @@
     <h1>Fiverr URL Finder</h1>
     
     <div class="section">
+      <h2>GitHub Gist Configuration</h2>
+      <input type="password" id="githubToken" placeholder="GitHub Personal Access Token" class="input-field">
+      <input type="text" id="gistId" placeholder="Gist ID (leave empty to create new)" class="input-field">
+      <button id="saveConfigButton" class="btn btn-secondary">Save Configuration</button>
+      <p id="configStatus" class="status-text"></p>
+    </div>
+    
+    <div class="section">
       <button id="scanButton" class="btn btn-primary">Scan All Tabs</button>
     </div>
 
     <div class="section">
-      <h2>Manual URL Input</h2>
-      <textarea id="manualUrls" placeholder="Enter URLs (one per line)"></textarea>
-      <button id="saveManualButton" class="btn btn-secondary">Save URLs</button>
+      <h2>Manual Username Input</h2>
+      <textarea id="manualUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
+      <button id="saveManualButton" class="btn btn-secondary">Save Usernames</button>
     </div>
 
     <div class="section">
-      <h2>New URLs Found</h2>
+      <h2>New Usernames Found</h2>
       <div id="newUrlsContainer">
-        <p class="no-urls">No new URLs yet</p>
+        <p class="no-urls">No new usernames yet</p>
       </div>
-      <button id="copyNewButton" class="btn btn-success" style="display: none;">Copy New URLs</button>
+      <button id="copyNewButton" class="btn btn-success" style="display: none;">Copy New Usernames</button>
     </div>
 
     <div class="section">
-      <h2>All URLs</h2>
-      <p id="totalCount">Total URLs in storage: 0</p>
-      <button id="copyAllButton" class="btn btn-info">Copy All URLs</button>
+      <h2>All Usernames</h2>
+      <p id="totalCount">Total usernames in Gist: 0</p>
+      <button id="copyAllButton" class="btn btn-info">Copy All Usernames</button>
     </div>
   </div>
 
