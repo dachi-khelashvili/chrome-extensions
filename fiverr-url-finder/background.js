@@ -1,23 +1,91 @@
-// Listen for scan request from popup
+// Listen for messages from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'scanAllTabs') {
     scanAllTabs()
-      .then(urls => {
-        sendResponse({ urls: urls });
+      .then(result => {
+        sendResponse({ urls: result.urls, tabIds: result.tabIds });
       })
       .catch(error => {
         console.error('Error scanning tabs:', error);
-        sendResponse({ urls: [], error: error.message });
+        sendResponse({ urls: [], tabIds: [], error: error.message });
       });
     
     // Return true to indicate we will send a response asynchronously
     return true;
   }
+  
+  if (request.action === 'closeTabs') {
+    closeTabs(request.tabIds)
+      .then(closed => {
+        sendResponse({ closed: closed });
+      })
+      .catch(error => {
+        console.error('Error closing tabs:', error);
+        sendResponse({ closed: 0, error: error.message });
+      });
+    
+    return true;
+  }
+  
+  if (request.action === 'openTabs') {
+    openTabs(request.urls)
+      .then(opened => {
+        sendResponse({ opened: opened });
+      })
+      .catch(error => {
+        console.error('Error opening tabs:', error);
+        sendResponse({ opened: 0, error: error.message });
+      });
+    
+    return true;
+  }
 });
+
+// Open multiple tabs
+async function openTabs(urls) {
+  if (!urls || urls.length === 0) return 0;
+  
+  let opened = 0;
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      await chrome.tabs.create({
+        url: urls[i],
+        active: i === 0 // Only first tab is active
+      });
+      opened++;
+      // Small delay to avoid overwhelming the browser
+      if (i < urls.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+    } catch (error) {
+      console.error(`Error opening tab ${i + 1}/${urls.length}:`, error);
+    }
+  }
+  
+  return opened;
+}
+
+// Close multiple tabs
+async function closeTabs(tabIds) {
+  if (!tabIds || tabIds.length === 0) return 0;
+  
+  let closed = 0;
+  for (const tabId of tabIds) {
+    try {
+      await chrome.tabs.remove(tabId);
+      closed++;
+    } catch (error) {
+      console.error(`Error closing tab ${tabId}:`, error);
+    }
+  }
+  
+  return closed;
+}
 
 // Scan all tabs for anchor elements with the specified class
 async function scanAllTabs() {
   const allUrls = [];
+  const scannedTabIds = [];
   
   try {
     // Get all tabs
@@ -30,6 +98,15 @@ async function scanAllTabs() {
         continue;
       }
       
+      // Check if tab URL itself is a freelancer URL
+      if (tab.url.includes('pro.fiverr.com/freelancers/')) {
+        const cleanUrl = tab.url.split('?')[0].split('#')[0];
+        if (cleanUrl.includes('/freelancers/')) {
+          allUrls.push(cleanUrl);
+          scannedTabIds.push(tab.id);
+        }
+      }
+      
       try {
         // Inject content script and get URLs
         const results = await chrome.scripting.executeScript({
@@ -39,6 +116,7 @@ async function scanAllTabs() {
         
         if (results && results[0] && results[0].result) {
           allUrls.push(...results[0].result);
+          scannedTabIds.push(tab.id);
         }
       } catch (error) {
         // Some tabs may not be accessible (e.g., chrome:// pages)
@@ -50,7 +128,10 @@ async function scanAllTabs() {
   }
   
   // Remove duplicates
-  return [...new Set(allUrls)];
+  return {
+    urls: [...new Set(allUrls)],
+    tabIds: [...new Set(scannedTabIds)]
+  };
 }
 
 // Function to extract URLs from the page (runs in page context)

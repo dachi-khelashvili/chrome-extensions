@@ -10,8 +10,21 @@ const githubToken = document.getElementById('githubToken');
 const gistId = document.getElementById('gistId');
 const saveConfigButton = document.getElementById('saveConfigButton');
 const configStatus = document.getElementById('configStatus');
+const manualTodoUrls = document.getElementById('manualTodoUrls');
+const saveTodoButton = document.getElementById('saveTodoButton');
+const processTodoButton = document.getElementById('processTodoButton');
+const todoCount = document.getElementById('todoCount');
+const manualFinalUrls = document.getElementById('manualFinalUrls');
+const saveFinalButton = document.getElementById('saveFinalButton');
+const scanFinalButton = document.getElementById('scanFinalButton');
+const finalCount = document.getElementById('finalCount');
+const finalNumber = document.getElementById('finalNumber');
+const copyFinalButton = document.getElementById('copyFinalButton');
+const openFinalButton = document.getElementById('openFinalButton');
 
 const GIST_FILENAME_PREFIX = 'fiverr-urls';
+const TODO_GIST_FILENAME_PREFIX = 'fiverr-todo';
+const FINAL_GIST_FILENAME_PREFIX = 'fiverr-final';
 const MAX_FILE_SIZE = 800 * 1024; // 800KB to stay under 1MB limit
 
 // Extract username from URL (relative or full)
@@ -58,19 +71,24 @@ function usernameToUrl(username) {
 
 // Get GitHub configuration from storage
 async function getGitHubConfig() {
-  const result = await chrome.storage.local.get(['githubToken', 'gistId']);
+  const result = await chrome.storage.local.get(['githubToken', 'gistId', 'todoGistId', 'finalGistId']);
   return {
     token: result.githubToken || '',
-    gistId: result.gistId || ''
+    gistId: result.gistId || '',
+    todoGistId: result.todoGistId || '',
+    finalGistId: result.finalGistId || ''
   };
 }
 
 // Save GitHub configuration to storage
-async function saveGitHubConfig(token, gistId) {
-  await chrome.storage.local.set({
+async function saveGitHubConfig(token, gistId, todoGistId, finalGistId) {
+  const updates = {
     githubToken: token,
     gistId: gistId || ''
-  });
+  };
+  if (todoGistId !== undefined) updates.todoGistId = todoGistId || '';
+  if (finalGistId !== undefined) updates.finalGistId = finalGistId || '';
+  await chrome.storage.local.set(updates);
 }
 
 // Load configuration on popup open
@@ -339,7 +357,7 @@ async function saveUsernames(usernames) {
       await updateGist(currentGistId, allUsernames);
     } else {
       const newGistId = await createGist(allUsernames);
-      await saveGitHubConfig(config.token, newGistId);
+      await saveGitHubConfig(config.token, newGistId, config.todoGistId, config.finalGistId);
       // Update the input field
       gistId.value = newGistId;
     }
@@ -355,6 +373,469 @@ async function saveUsernames(usernames) {
   await loadNewUrls();
   
   return newUsernames;
+}
+
+// ========== TODO LIST FUNCTIONS ==========
+
+// Get URLs from Todo Gist
+async function getTodoUrlsFromGist() {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('GitHub token not configured');
+  }
+  
+  if (!config.todoGistId) {
+    return [];
+  }
+  
+  try {
+    const response = await fetch(`https://api.github.com/gists/${config.todoGistId}`, {
+      headers: {
+        'Authorization': `Bearer ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return [];
+      }
+      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const gist = await response.json();
+    const allUrls = [];
+    
+    const filePattern = new RegExp(`^${TODO_GIST_FILENAME_PREFIX}(-\\d+)?\\.txt$`);
+    
+    Object.keys(gist.files).forEach(filename => {
+      if (filePattern.test(filename)) {
+        const file = gist.files[filename];
+        if (file && file.content) {
+          const urls = file.content
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(url => url.trim()); // Normalize URLs
+          allUrls.push(...urls);
+        }
+      }
+    });
+    
+    // Remove duplicates and return normalized URLs
+    return [...new Set(allUrls.map(url => url.trim()))];
+  } catch (error) {
+    console.error('Error fetching Todo Gist:', error);
+    throw error;
+  }
+}
+
+// Save URLs to Todo Gist
+async function saveUrlsToTodo(urls) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('Please configure GitHub token first');
+  }
+  
+  // Get existing URLs from Todo Gist
+  let existingUrls = [];
+  let currentTodoGistId = config.todoGistId;
+  
+  try {
+    if (currentTodoGistId) {
+      existingUrls = await getTodoUrlsFromGist();
+    }
+  } catch (error) {
+    console.log('Could not fetch existing Todo Gist, starting fresh:', error);
+    existingUrls = [];
+    currentTodoGistId = '';
+  }
+  
+  const existingSet = new Set(existingUrls);
+  const newUrls = [];
+  const allUrls = [...existingUrls];
+  
+  // Find new URLs (store as full URLs in todo)
+  urls.forEach(url => {
+    const fullUrl = url.startsWith('http') ? url : usernameToUrl(url);
+    if (fullUrl && !existingSet.has(fullUrl)) {
+      existingSet.add(fullUrl);
+      allUrls.push(fullUrl);
+      newUrls.push(fullUrl);
+    }
+  });
+  
+  // Update or create Todo Gist
+  if (allUrls.length > 0) {
+    if (currentTodoGistId) {
+      await updateTodoGist(currentTodoGistId, allUrls);
+    } else {
+      const newGistId = await createTodoGist(allUrls);
+      await saveGitHubConfig(config.token, config.gistId, newGistId, config.finalGistId);
+    }
+  }
+  
+  return newUrls;
+}
+
+// Create Todo Gist
+async function createTodoGist(urls) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('GitHub token not configured');
+  }
+  
+  const filesObj = splitUrlsIntoFiles(urls, TODO_GIST_FILENAME_PREFIX);
+  const files = {};
+  
+  Object.keys(filesObj).forEach(filename => {
+    files[filename] = {
+      content: filesObj[filename]
+    };
+  });
+  
+  const response = await fetch('https://api.github.com/gists', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      description: 'Fiverr Todo URLs',
+      public: false,
+      files: files
+    })
+  });
+  
+  if (!response.ok) {
+    let errorMessage = `Failed to create Todo Gist: ${response.status} ${response.statusText}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message || errorMessage;
+    } catch (e) {}
+    throw new Error(errorMessage);
+  }
+  
+  const gist = await response.json();
+  return gist.id;
+}
+
+// Update Todo Gist
+async function updateTodoGist(gistId, urls) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('GitHub token not configured');
+  }
+  
+  const gistResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
+    headers: {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json'
+    }
+  });
+  
+  if (!gistResponse.ok) {
+    throw new Error('Failed to fetch existing Todo Gist');
+  }
+  
+  const existingGist = await gistResponse.json();
+  const filesToUpdate = {};
+  
+  const newFilesObj = splitUrlsIntoFiles(urls, TODO_GIST_FILENAME_PREFIX);
+  const newFileNames = new Set(Object.keys(newFilesObj));
+  
+  const filePattern = new RegExp(`^${TODO_GIST_FILENAME_PREFIX}(-\\d+)?\\.txt$`);
+  Object.keys(existingGist.files).forEach(filename => {
+    if (filePattern.test(filename) && !newFileNames.has(filename)) {
+      filesToUpdate[filename] = null;
+    }
+  });
+  
+  Object.keys(newFilesObj).forEach(filename => {
+    filesToUpdate[filename] = {
+      content: newFilesObj[filename]
+    };
+  });
+  
+  const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      files: filesToUpdate
+    })
+  });
+  
+  if (!response.ok) {
+    let errorMessage = `Failed to update Todo Gist: ${response.status} ${response.statusText}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message || errorMessage;
+    } catch (e) {}
+    throw new Error(errorMessage);
+  }
+}
+
+// Split URLs into files (for todo/final lists that store full URLs)
+function splitUrlsIntoFiles(urls, prefix) {
+  const files = {};
+  let currentFileIndex = 1;
+  let currentFileContent = '';
+  
+  urls.forEach(url => {
+    const line = url + '\n';
+    const encoder = new TextEncoder();
+    const lineSize = encoder.encode(line).length;
+    const currentSize = encoder.encode(currentFileContent).length;
+    
+    if (currentSize + lineSize > MAX_FILE_SIZE && currentFileContent.length > 0) {
+      const filename = currentFileIndex === 1 
+        ? `${prefix}.txt`
+        : `${prefix}-${currentFileIndex}.txt`;
+      files[filename] = currentFileContent.trim();
+      currentFileIndex++;
+      currentFileContent = line;
+    } else {
+      currentFileContent += line;
+    }
+  });
+  
+  if (currentFileContent.trim().length > 0) {
+    const filename = currentFileIndex === 1 
+      ? `${prefix}.txt`
+      : `${prefix}-${currentFileIndex}.txt`;
+    files[filename] = currentFileContent.trim();
+  }
+  
+  return files;
+}
+
+// ========== FINAL LIST FUNCTIONS ==========
+
+// Get URLs from Final Gist
+async function getFinalUrlsFromGist() {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('GitHub token not configured');
+  }
+  
+  if (!config.finalGistId) {
+    return [];
+  }
+  
+  try {
+    const response = await fetch(`https://api.github.com/gists/${config.finalGistId}`, {
+      headers: {
+        'Authorization': `Bearer ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        return [];
+      }
+      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const gist = await response.json();
+    const allUrls = [];
+    
+    const filePattern = new RegExp(`^${FINAL_GIST_FILENAME_PREFIX}(-\\d+)?\\.txt$`);
+    
+    Object.keys(gist.files).forEach(filename => {
+      if (filePattern.test(filename)) {
+        const file = gist.files[filename];
+        if (file && file.content) {
+          const urls = file.content
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+          allUrls.push(...urls);
+        }
+      }
+    });
+    
+    return [...new Set(allUrls)];
+  } catch (error) {
+    console.error('Error fetching Final Gist:', error);
+    throw error;
+  }
+}
+
+// Add URLs to Final Gist (only freelancer URLs)
+async function addUrlsToFinal(urls) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('Please configure GitHub token first');
+  }
+  
+  // Filter only freelancer URLs
+  const freelancerUrls = urls
+    .map(url => {
+      if (url.startsWith('http')) {
+        return url.includes('/freelancers/') ? url : null;
+      }
+      const fullUrl = usernameToUrl(url);
+      return fullUrl;
+    })
+    .filter(url => url !== null);
+  
+  if (freelancerUrls.length === 0) {
+    return [];
+  }
+  
+  // Get existing URLs from Final Gist
+  let existingUrls = [];
+  let currentFinalGistId = config.finalGistId;
+  
+  try {
+    if (currentFinalGistId) {
+      existingUrls = await getFinalUrlsFromGist();
+    }
+  } catch (error) {
+    console.log('Could not fetch existing Final Gist, starting fresh:', error);
+    existingUrls = [];
+    currentFinalGistId = '';
+  }
+  
+  const existingSet = new Set(existingUrls);
+  const newUrls = [];
+  const allUrls = [...existingUrls];
+  
+  freelancerUrls.forEach(url => {
+    if (!existingSet.has(url)) {
+      existingSet.add(url);
+      allUrls.push(url);
+      newUrls.push(url);
+    }
+  });
+  
+  // Update or create Final Gist
+  if (allUrls.length > 0) {
+    if (currentFinalGistId) {
+      await updateFinalGist(currentFinalGistId, allUrls);
+    } else {
+      const newGistId = await createFinalGist(allUrls);
+      await saveGitHubConfig(config.token, config.gistId, config.todoGistId, newGistId);
+    }
+  }
+  
+  return newUrls;
+}
+
+// Create Final Gist
+async function createFinalGist(urls) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('GitHub token not configured');
+  }
+  
+  const filesObj = splitUrlsIntoFiles(urls, FINAL_GIST_FILENAME_PREFIX);
+  const files = {};
+  
+  Object.keys(filesObj).forEach(filename => {
+    files[filename] = {
+      content: filesObj[filename]
+    };
+  });
+  
+  const response = await fetch('https://api.github.com/gists', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      description: 'Fiverr Final URLs',
+      public: false,
+      files: files
+    })
+  });
+  
+  if (!response.ok) {
+    let errorMessage = `Failed to create Final Gist: ${response.status} ${response.statusText}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message || errorMessage;
+    } catch (e) {}
+    throw new Error(errorMessage);
+  }
+  
+  const gist = await response.json();
+  return gist.id;
+}
+
+// Update Final Gist
+async function updateFinalGist(gistId, urls) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    throw new Error('GitHub token not configured');
+  }
+  
+  const gistResponse = await fetch(`https://api.github.com/gists/${gistId}`, {
+    headers: {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json'
+    }
+  });
+  
+  if (!gistResponse.ok) {
+    throw new Error('Failed to fetch existing Final Gist');
+  }
+  
+  const existingGist = await gistResponse.json();
+  const filesToUpdate = {};
+  
+  const newFilesObj = splitUrlsIntoFiles(urls, FINAL_GIST_FILENAME_PREFIX);
+  const newFileNames = new Set(Object.keys(newFilesObj));
+  
+  const filePattern = new RegExp(`^${FINAL_GIST_FILENAME_PREFIX}(-\\d+)?\\.txt$`);
+  Object.keys(existingGist.files).forEach(filename => {
+    if (filePattern.test(filename) && !newFileNames.has(filename)) {
+      filesToUpdate[filename] = null;
+    }
+  });
+  
+  Object.keys(newFilesObj).forEach(filename => {
+    filesToUpdate[filename] = {
+      content: newFilesObj[filename]
+    };
+  });
+  
+  const response = await fetch(`https://api.github.com/gists/${gistId}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      files: filesToUpdate
+    })
+  });
+  
+  if (!response.ok) {
+    let errorMessage = `Failed to update Final Gist: ${response.status} ${response.statusText}`;
+    try {
+      const error = await response.json();
+      errorMessage = error.message || errorMessage;
+    } catch (e) {}
+    throw new Error(errorMessage);
+  }
 }
 
 // Load and display new URLs
@@ -439,12 +920,15 @@ saveConfigButton.addEventListener('click', async () => {
       }
     }
     
-    await saveGitHubConfig(token, gistIdValue);
+    const config = await getGitHubConfig();
+    await saveGitHubConfig(token, gistIdValue, config.todoGistId, config.finalGistId);
     configStatus.textContent = 'Configuration saved successfully!';
     configStatus.className = 'status-text success';
     
     // Reload URLs
     await loadNewUrls();
+    await loadTodoCount();
+    await loadFinalCount();
   } catch (error) {
     configStatus.textContent = `Error: ${error.message}`;
     configStatus.className = 'status-text error';
@@ -473,6 +957,9 @@ scanButton.addEventListener('click', async () => {
     }
     
     if (response.urls && response.urls.length > 0) {
+
+      scanButton.textContent = `${response.urls.length} URLs found`;
+
       const usernames = response.urls
         .map(extractUsername)
         .filter(username => username !== null);
@@ -483,9 +970,18 @@ scanButton.addEventListener('click', async () => {
       }
       
       const newUsernames = await saveUsernames(usernames);
+
+      scanButton.textContent = `${newUsernames.length} new usernames found`;
       
+      // Automatically add new URLs to todo list
       if (newUsernames.length > 0) {
-        alert(`Found ${newUsernames.length} new username(s)!`);
+        const newUrls = newUsernames.map(username => usernameToUrl(username)).filter(url => url !== null);
+        try {
+          await saveUrlsToTodo(newUrls);
+        } catch (error) {
+          console.error('Error adding to todo:', error);
+        }
+        alert(`Found ${newUsernames.length} new username(s)! Added to todo list.`);
       } else {
         alert('No new usernames found.');
       }
@@ -589,11 +1085,539 @@ copyAllButton.addEventListener('click', async () => {
   }
 });
 
+// Load todo count
+async function loadTodoCount() {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    if (todoCount) todoCount.textContent = 'Please configure GitHub token first';
+    return;
+  }
+  
+  try {
+    const urls = await getTodoUrlsFromGist();
+    if (todoCount) todoCount.textContent = `Total URLs in Todo: ${urls.length}`;
+  } catch (error) {
+    if (todoCount) todoCount.textContent = `Error: ${error.message}`;
+  }
+}
+
+// Load final count
+async function loadFinalCount() {
+  const config = await getGitHubConfig();
+  
+  if (!config.token) {
+    if (finalCount) finalCount.textContent = 'Please configure GitHub token first';
+    return;
+  }
+  
+  try {
+    const urls = await getFinalUrlsFromGist();
+    if (finalCount) finalCount.textContent = `Total URLs in Final: ${urls.length}`;
+  } catch (error) {
+    if (finalCount) finalCount.textContent = `Error: ${error.message}`;
+  }
+}
+
+// Open URLs in browser
+async function openUrlsInBrowser(urls) {
+  if (!urls || urls.length === 0) return [];
+  
+  // Use background script to open tabs to avoid popup limitations
+  try {
+    const response = await chrome.runtime.sendMessage({
+      action: 'openTabs',
+      urls: urls
+    });
+    
+    if (response && response.opened) {
+      console.log(`Opened ${response.opened} out of ${urls.length} URLs`);
+      return response.opened;
+    }
+  } catch (error) {
+    console.error('Error opening tabs via background:', error);
+  }
+  
+  // Fallback: try opening directly (may be limited by Chrome)
+  const openedUrls = [];
+  for (let i = 0; i < urls.length; i++) {
+    try {
+      await chrome.tabs.create({ 
+        url: urls[i],
+        active: i === 0
+      });
+      openedUrls.push(urls[i]);
+      // Delay to avoid overwhelming browser
+      if (i < urls.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    } catch (error) {
+      console.error(`Error opening ${urls[i]}:`, error);
+    }
+  }
+  
+  console.log(`Opened ${openedUrls.length} out of ${urls.length} URLs`);
+  return openedUrls;
+}
+
+// Remove URLs from Todo Gist
+async function removeUrlsFromTodo(urlsToRemove) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token || !config.todoGistId) {
+    throw new Error('Todo Gist not configured');
+  }
+  
+  console.log('Starting removal. URLs to remove:', urlsToRemove.length);
+  
+  const allUrls = await getTodoUrlsFromGist();
+  console.log('Total URLs in todo before removal:', allUrls.length);
+  
+  // Normalize URLs for comparison (trim and ensure consistent format)
+  const normalizedRemoveSet = new Set(
+    urlsToRemove.map(url => url.trim().toLowerCase())
+  );
+  
+  const remainingUrls = allUrls
+    .map(url => url.trim())
+    .filter(url => {
+      const normalized = url.trim().toLowerCase();
+      const shouldRemove = normalizedRemoveSet.has(normalized);
+      if (shouldRemove) {
+        console.log('Removing:', url);
+      }
+      return !shouldRemove;
+    });
+  
+  console.log(`Removing ${urlsToRemove.length} URLs from todo. Remaining: ${remainingUrls.length}`);
+  console.log('Remaining URLs:', remainingUrls);
+  
+  if (remainingUrls.length === 0) {
+    // Delete the Gist if empty
+    console.log('Todo list is empty, deleting Gist');
+    const deleteResponse = await fetch(`https://api.github.com/gists/${config.todoGistId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (deleteResponse.ok || deleteResponse.status === 404) {
+      await saveGitHubConfig(config.token, config.gistId, '', config.finalGistId);
+      console.log('Deleted empty todo Gist');
+    } else {
+      const errorText = await deleteResponse.text();
+      console.error('Failed to delete Gist:', errorText);
+      throw new Error('Failed to delete empty todo Gist');
+    }
+  } else {
+    console.log('Updating todo Gist with remaining URLs');
+    await updateTodoGist(config.todoGistId, remainingUrls);
+    console.log('Todo Gist updated successfully');
+  }
+}
+
+// Save manual todo URLs button
+saveTodoButton.addEventListener('click', async () => {
+  const inputText = manualTodoUrls.value.trim();
+  if (!inputText) {
+    alert('Please enter at least one URL.');
+    return;
+  }
+  
+  const urls = inputText
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(input => {
+      if (input.startsWith('http')) {
+        return input;
+      }
+      return usernameToUrl(input);
+    })
+    .filter(url => url !== null);
+  
+  if (urls.length === 0) {
+    alert('No valid URLs found.');
+    return;
+  }
+  
+  try {
+    saveTodoButton.disabled = true;
+    saveTodoButton.textContent = 'Saving...';
+    const newUrls = await saveUrlsToTodo(urls);
+    
+    if (newUrls.length > 0) {
+      alert(`Added ${newUrls.length} new URL(s) to todo!`);
+      manualTodoUrls.value = '';
+      await loadTodoCount();
+    } else {
+      alert('All URLs already exist in todo.');
+    }
+  } catch (error) {
+    console.error('Error saving todo:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    saveTodoButton.disabled = false;
+    saveTodoButton.textContent = 'Add to Todo';
+  }
+});
+
+// Process 20 URLs from todo button
+processTodoButton.addEventListener('click', async () => {
+  try {
+    processTodoButton.disabled = true;
+    processTodoButton.textContent = 'Processing...';
+    
+    const urls = await getTodoUrlsFromGist();
+    
+    if (urls.length === 0) {
+      alert('No URLs in todo list.');
+      return;
+    }
+    
+    const count = 20;
+    const urlsToProcess = urls.slice(0, count).map(url => url.trim());
+    
+    console.log(`Processing ${urlsToProcess.length} URLs from todo:`, urlsToProcess);
+    
+    // Copy to clipboard first
+    const textToCopy = urlsToProcess.join('\n');
+    await navigator.clipboard.writeText(textToCopy);
+    console.log('Copied to clipboard');
+    
+    // Remove from todo FIRST (before opening, so it happens even if opening fails)
+    try {
+      await removeUrlsFromTodo(urlsToProcess);
+      console.log('Removed URLs from todo');
+    } catch (error) {
+      console.error('Error removing URLs from todo:', error);
+      alert(`Error removing URLs: ${error.message}`);
+      return; // Don't continue if removal fails
+    }
+    
+    // Open in browser (after removal, so removal always happens)
+    try {
+      const opened = await openUrlsInBrowser(urlsToProcess);
+      console.log(`Opened ${opened} URLs in browser`);
+    } catch (error) {
+      console.error('Error opening URLs:', error);
+      // Continue even if opening fails - removal already happened
+    }
+    
+    await loadTodoCount();
+    alert(`Processed ${urlsToProcess.length} URL(s)! Removed from todo, opened in browser, and copied to clipboard.`);
+  } catch (error) {
+    console.error('Error processing todo:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    processTodoButton.disabled = false;
+    processTodoButton.textContent = 'Process 20 URLs (Open + Copy)';
+  }
+});
+
+// Save manual final URLs button
+saveFinalButton.addEventListener('click', async () => {
+  const inputText = manualFinalUrls.value.trim();
+  if (!inputText) {
+    alert('Please enter at least one URL.');
+    return;
+  }
+  
+  // Split by newlines and filter empty lines, extract URLs
+  const urls = inputText
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(input => {
+      // If it's already a full URL, use it; otherwise convert username to URL
+      if (input.startsWith('http')) {
+        return input;
+      }
+      return usernameToUrl(input);
+    })
+    .filter(url => url !== null && url.includes('/freelancers/'));
+  
+  if (urls.length === 0) {
+    alert('No valid freelancer URLs found.');
+    return;
+  }
+  
+  try {
+    saveFinalButton.disabled = true;
+    saveFinalButton.textContent = 'Saving...';
+    const newUrls = await addUrlsToFinal(urls);
+    
+    if (newUrls.length > 0) {
+      alert(`Added ${newUrls.length} new URL(s) to final list!`);
+      manualFinalUrls.value = '';
+      await loadFinalCount();
+    } else {
+      alert('All URLs already exist in final list.');
+    }
+  } catch (error) {
+    console.error('Error saving final:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    saveFinalButton.disabled = false;
+    saveFinalButton.textContent = 'Add to Final';
+  }
+});
+
+// Scan final button
+scanFinalButton.addEventListener('click', async () => {
+  scanFinalButton.disabled = true;
+  scanFinalButton.textContent = 'Scanning...';
+  
+  try {
+    console.log('Starting scan for final list...');
+    const response = await chrome.runtime.sendMessage({ action: 'scanAllTabs' });
+    
+    if (!response) {
+      alert('No response from background script. Please try again.');
+      return;
+    }
+    
+    if (response.error) {
+      throw new Error(response.error);
+    }
+    
+    console.log('Scan response:', response);
+    console.log('URLs found:', response.urls?.length || 0);
+    
+    if (response.urls && response.urls.length > 0) {
+      // Convert all URLs to full freelancer URLs (format: https://pro.fiverr.com/freelancers/username)
+      const freelancerUrls = [];
+      
+      for (const href of response.urls) {
+        try {
+          let fullUrl = null;
+          
+          // If it's already a full URL
+          if (href.startsWith('http')) {
+            // Check if it's a freelancer URL
+            if (href.includes('pro.fiverr.com/freelancers/') || href.includes('fiverr.com/freelancers/')) {
+              // Extract the clean URL
+              const urlObj = new URL(href);
+              if (urlObj.pathname.includes('/freelancers/')) {
+                // Ensure it's pro.fiverr.com
+                const username = urlObj.pathname.split('/freelancers/')[1]?.split('/')[0];
+                if (username) {
+                  fullUrl = `https://pro.fiverr.com/freelancers/${username}`;
+                }
+              }
+            }
+          } else {
+            // It's a relative URL, extract username and convert
+            const username = extractUsername(href);
+            if (username) {
+              fullUrl = usernameToUrl(username);
+            }
+          }
+          
+          // Only add if it's a valid freelancer URL
+          if (fullUrl && fullUrl.startsWith('https://pro.fiverr.com/freelancers/')) {
+            freelancerUrls.push(fullUrl);
+          }
+        } catch (error) {
+          console.error(`Error processing URL ${href}:`, error);
+        }
+      }
+      
+      // Remove duplicates
+      const uniqueUrls = [...new Set(freelancerUrls)];
+      console.log(`Found ${uniqueUrls.length} unique freelancer URLs:`, uniqueUrls);
+      
+      if (uniqueUrls.length === 0) {
+        alert('No freelancer URLs found in tabs. Make sure you have Fiverr pages with profile links open.');
+        return;
+      }
+      
+      // Add to final list
+      const newUrls = await addUrlsToFinal(uniqueUrls);
+      console.log(`Added ${newUrls.length} new URLs to final list`);
+      
+      // Close scanned tabs
+      if (response.tabIds && response.tabIds.length > 0) {
+        try {
+          const closeResponse = await chrome.runtime.sendMessage({
+            action: 'closeTabs',
+            tabIds: response.tabIds
+          });
+          console.log(`Closed ${closeResponse?.closed || 0} tabs`);
+        } catch (error) {
+          console.error('Error closing tabs:', error);
+          // Continue even if closing fails
+        }
+      }
+      
+      if (newUrls.length > 0) {
+        alert(`Added ${newUrls.length} new freelancer URL(s) to final list! Closed scanned tabs.`);
+        await loadFinalCount();
+      } else {
+        alert(`Found ${uniqueUrls.length} freelancer URL(s), but all already exist in final list. Closed scanned tabs.`);
+      }
+    } else {
+      alert('No URLs found in any tabs. Make sure you have Fiverr pages open.');
+    }
+  } catch (error) {
+    console.error('Error scanning for final:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    scanFinalButton.disabled = false;
+    scanFinalButton.textContent = 'Scan Tabs & Add to Final';
+  }
+});
+
+// Remove URLs from Final Gist
+async function removeUrlsFromFinal(urlsToRemove) {
+  const config = await getGitHubConfig();
+  
+  if (!config.token || !config.finalGistId) {
+    throw new Error('Final Gist not configured');
+  }
+  
+  console.log('Starting removal. URLs to remove:', urlsToRemove.length);
+  
+  const allUrls = await getFinalUrlsFromGist();
+  console.log('Total URLs in final before removal:', allUrls.length);
+  
+  // Normalize URLs for comparison (trim and ensure consistent format)
+  const normalizedRemoveSet = new Set(
+    urlsToRemove.map(url => url.trim().toLowerCase())
+  );
+  
+  const remainingUrls = allUrls
+    .map(url => url.trim())
+    .filter(url => {
+      const normalized = url.trim().toLowerCase();
+      const shouldRemove = normalizedRemoveSet.has(normalized);
+      if (shouldRemove) {
+        console.log('Removing:', url);
+      }
+      return !shouldRemove;
+    });
+  
+  console.log(`Removing ${urlsToRemove.length} URLs from final. Remaining: ${remainingUrls.length}`);
+  
+  if (remainingUrls.length === 0) {
+    // Delete the Gist if empty
+    console.log('Final list is empty, deleting Gist');
+    const deleteResponse = await fetch(`https://api.github.com/gists/${config.finalGistId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (deleteResponse.ok || deleteResponse.status === 404) {
+      await saveGitHubConfig(config.token, config.gistId, config.todoGistId, '');
+      console.log('Deleted empty final Gist');
+    } else {
+      const errorText = await deleteResponse.text();
+      console.error('Failed to delete Gist:', errorText);
+      throw new Error('Failed to delete empty final Gist');
+    }
+  } else {
+    console.log('Updating final Gist with remaining URLs');
+    await updateFinalGist(config.finalGistId, remainingUrls);
+    console.log('Final Gist updated successfully');
+  }
+}
+
+// Copy final URLs button
+copyFinalButton.addEventListener('click', async () => {
+  try {
+    copyFinalButton.disabled = true;
+    copyFinalButton.textContent = 'Copying...';
+    
+    const count = parseInt(finalNumber.value) || 12;
+    const allUrls = await getFinalUrlsFromGist();
+    
+    if (allUrls.length === 0) {
+      alert('No URLs in final list.');
+      return;
+    }
+    
+    const urlsToCopy = allUrls.slice(0, count).map(url => url.trim());
+    
+    // Copy to clipboard
+    const textToCopy = urlsToCopy.join('\n');
+    await navigator.clipboard.writeText(textToCopy);
+    console.log('Copied to clipboard');
+    
+    // Remove from final list
+    await removeUrlsFromFinal(urlsToCopy);
+    console.log('Removed URLs from final list');
+    
+    await loadFinalCount();
+    alert(`Copied ${urlsToCopy.length} URL(s) to clipboard and removed from final list!`);
+  } catch (error) {
+    console.error('Error copying final URLs:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    copyFinalButton.disabled = false;
+    copyFinalButton.textContent = 'Copy URLs';
+  }
+});
+
+// Open final URLs button
+openFinalButton.addEventListener('click', async () => {
+  try {
+    openFinalButton.disabled = true;
+    openFinalButton.textContent = 'Opening...';
+    
+    const count = parseInt(finalNumber.value) || 12;
+    const allUrls = await getFinalUrlsFromGist();
+    
+    if (allUrls.length === 0) {
+      alert('No URLs in final list.');
+      return;
+    }
+    
+    const urlsToOpen = allUrls.slice(0, count).map(url => url.trim());
+    
+    // Remove from final list FIRST (before opening, so it happens even if opening fails)
+    try {
+      await removeUrlsFromFinal(urlsToOpen);
+      console.log('Removed URLs from final list');
+    } catch (error) {
+      console.error('Error removing URLs from final:', error);
+      alert(`Error removing URLs: ${error.message}`);
+      return; // Don't continue if removal fails
+    }
+    
+    // Open in browser (after removal, so removal always happens)
+    try {
+      const opened = await openUrlsInBrowser(urlsToOpen);
+      console.log(`Opened ${opened} URLs in browser`);
+    } catch (error) {
+      console.error('Error opening URLs:', error);
+      // Continue even if opening fails - removal already happened
+    }
+    
+    await loadFinalCount();
+    alert(`Opened ${urlsToOpen.length} URL(s) in browser and removed from final list!`);
+  } catch (error) {
+    console.error('Error opening final URLs:', error);
+    alert(`Error: ${error.message}`);
+  } finally {
+    openFinalButton.disabled = false;
+    openFinalButton.textContent = 'Open Tabs';
+  }
+});
+
 // Load configuration and URLs on popup open
 loadConfig();
 loadNewUrls();
+loadTodoCount();
+loadFinalCount();
 
 // Listen for storage changes to update display
 chrome.storage.onChanged.addListener(() => {
   loadNewUrls();
+  loadTodoCount();
+  loadFinalCount();
 });
