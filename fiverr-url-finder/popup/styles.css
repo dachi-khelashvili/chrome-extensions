@@ -14,20 +14,21 @@ body {
 
 .header {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   padding: 16px;
   width: 100%;
   background: linear-gradient(135deg, #1f74ff, #8acbff);
   color: white;
   align-items: center;
-  position: sticky;
 }
 
 .header-icon {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   object-fit: cover;
+  padding: 4px;
+  background: white;
 }
 
 .header-content {
@@ -37,7 +38,6 @@ body {
 }
 
 .header-title {
-  font-size: 16px;
   font-weight: 600;
   text-align: left;
   color: white;
@@ -46,25 +46,26 @@ body {
 
 .header-description {
   margin: 0;
-  font-size: 11px;
   font-weight: 400;
+  font-size: 11px;
   opacity: 0.8;
   color: white;
 }
 
 .container {
-  padding: 20px;
+  max-height: calc(100vh - 72px);
+  overflow-y: scroll;
 }
 
 h1 {
-  font-size: 20px;
+  font-size: 16px;
   color: #333;
   text-align: center;
   margin: 5px 0 10px 0;
 }
 
 h2 {
-  font-size: 16px;
+  font-size: 14px;
   color: #555;
   margin: 5px 0 10px 0;
 }
@@ -85,7 +86,6 @@ h2 {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
   font-weight: 500;
   transition: all 0.2s;
   width: 100%;
@@ -132,7 +132,6 @@ textarea {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 14px;
   font-family: inherit;
   resize: vertical;
 }
@@ -156,7 +155,6 @@ textarea:focus {
   margin-bottom: 5px;
   background: white;
   border-radius: 4px;
-  font-size: 13px;
   word-break: break-all;
   border-left: 3px solid #1dbf73;
 }
@@ -174,7 +172,6 @@ textarea:focus {
 
 #totalCount {
   color: #666;
-  font-size: 14px;
 }
 
 .input-field {
@@ -182,7 +179,6 @@ textarea:focus {
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 6px;
-  font-size: 14px;
   font-family: inherit;
 }
 
@@ -192,7 +188,6 @@ textarea:focus {
 }
 
 .status-text {
-  font-size: 12px;
   color: #666;
   min-height: 16px;
 }
@@ -233,7 +228,6 @@ input[type="number"] {
   padding: 5px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
   font-family: inherit;
 }
 
