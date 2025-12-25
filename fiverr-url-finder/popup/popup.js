@@ -9,7 +9,6 @@ const totalCount = document.getElementById('totalCount');
 const githubToken = document.getElementById('githubToken');
 const gistId = document.getElementById('gistId');
 const saveConfigButton = document.getElementById('saveConfigButton');
-const configStatus = document.getElementById('configStatus');
 const manualTodoUrls = document.getElementById('manualTodoUrls');
 const saveTodoButton = document.getElementById('saveTodoButton');
 const copyAllTodoButton = document.getElementById('copyAllTodoButton');
@@ -886,14 +885,16 @@ saveConfigButton.addEventListener('click', async () => {
   const gistIdValue = gistId.value.trim();
   
   if (!token) {
-    configStatus.textContent = 'Please enter a GitHub token';
-    configStatus.className = 'status-text error';
+    saveConfigButton.textContent = 'Please enter a GitHub token';
+    await setTimeout(() => {
+      saveConfigButton.textContent = 'Save Configuration';
+    }, 500);
     return;
   }
   
   saveConfigButton.disabled = true;
   saveConfigButton.textContent = 'Saving...';
-  configStatus.textContent = '';
+  await setTimeout(() => {}, 500);
   
   try {
     // Test the token by trying to get user info
@@ -924,19 +925,19 @@ saveConfigButton.addEventListener('click', async () => {
     
     const config = await getGitHubConfig();
     await saveGitHubConfig(token, gistIdValue, config.todoGistId, config.finalGistId);
-    configStatus.textContent = 'Configuration saved successfully!';
-    configStatus.className = 'status-text success';
+    saveConfigButton.textContent = 'Configuration saved successfully!';
     
     // Reload URLs
     await loadNewUrls();
     await loadTodoCount();
     await loadFinalCount();
   } catch (error) {
-    configStatus.textContent = `Error: ${error.message}`;
-    configStatus.className = 'status-text error';
+    saveConfigButton.textContent = `Error: ${error.message}`;
   } finally {
-    saveConfigButton.disabled = false;
-    saveConfigButton.textContent = 'Save Configuration';
+    await setTimeout(() => {
+      saveConfigButton.textContent = 'Save Configuration';
+      saveConfigButton.disabled = false;
+    }, 500);
   }
 });
 
@@ -950,7 +951,7 @@ scanButton.addEventListener('click', async () => {
     const response = await chrome.runtime.sendMessage({ action: 'scanAllTabs' });
     
     if (!response) {
-      alert('No response from background script. Please try again.');
+      scanButton.textContent = 'No response from background script. Please try again.';
       return;
     }
     
@@ -967,7 +968,10 @@ scanButton.addEventListener('click', async () => {
         .filter(username => username !== null);
       
       if (usernames.length === 0) {
-        alert('Found URLs but could not extract usernames. Please check the URL format.');
+        scanButton.textContent = "Found URLs but could not extract usernames. Please check the URL format.";
+        await setTimeout(() => {
+          scanButton.textContent = 'Scan All Tabs';
+        }, 500);
         return;
       }
       
@@ -983,20 +987,21 @@ scanButton.addEventListener('click', async () => {
         } catch (error) {
           console.error('Error adding to todo:', error);
         }
-        alert(`Found ${newUsernames.length} new username(s)! Added to todo list.`);
+        scanButton.textContent = `${newUsernames.length} new username(s)! Added to todo list.`;
       } else {
-        alert('No new usernames found.');
+        scanButton.textContent = 'No new usernames found.';
       }
     } else {
-      alert('No URLs found in any tabs. Make sure you have Fiverr pages open.');
+      scanButton.textContent = "No URLs found in any tabs. Make sure you have Fiverr pages open.";
     }
   } catch (error) {
     console.error('Error scanning tabs:', error);
-    const errorMessage = error.message || 'Unknown error occurred';
-    alert(`Error: ${errorMessage}`);
+    scanButton.textContent = `Error: ${error.message || 'Unknown error occurred'}`;
   } finally {
-    scanButton.disabled = false;
-    scanButton.textContent = 'Scan All Tabs';
+    await setTimeout(() => {
+      scanButton.textContent = 'Scan All Tabs';
+      scanButton.disabled = false;
+    }, 500);
   }
 });
 
@@ -1004,7 +1009,7 @@ scanButton.addEventListener('click', async () => {
 saveManualButton.addEventListener('click', async () => {
   const inputText = manualUrls.value.trim();
   if (!inputText) {
-    alert('Please enter at least one URL.');
+    saveManualButton.textContent = 'Please enter at least one URL.';
     return;
   }
   
@@ -1020,7 +1025,7 @@ saveManualButton.addEventListener('click', async () => {
     .filter(username => username !== null && username.length > 0);
   
   if (usernames.length === 0) {
-    alert('No valid usernames found.');
+    saveManualButton.textContent = 'No valid usernames found.';
     return;
   }
   
@@ -1030,17 +1035,19 @@ saveManualButton.addEventListener('click', async () => {
     const newUsernames = await saveUsernames(usernames);
     
     if (newUsernames.length > 0) {
-      alert(`Saved ${newUsernames.length} new username(s)!`);
+      saveManualButton.textContent = `${newUsernames.length} new username(s)! Saved!`;
       manualUrls.value = ''; // Clear input
     } else {
-      alert('All usernames already exist in Gist.');
+      saveManualButton.textContent = 'All usernames already exist in Gist.';
     }
   } catch (error) {
     console.error('Error saving usernames:', error);
-    alert(`Error: ${error.message}`);
+    saveManualButton.textContent = `Error: ${error.message}`;
   } finally {
-    saveManualButton.disabled = false;
-    saveManualButton.textContent = 'Save Usernames';
+    await setTimeout(() => {
+      saveManualButton.disabled = false;
+      saveManualButton.textContent = 'Save Usernames';
+    }, 500);
   }
 });
 
@@ -1050,7 +1057,7 @@ copyNewButton.addEventListener('click', async () => {
   const newUsernames = result.newUrls || [];
   
   if (newUsernames.length === 0) {
-    alert('No new usernames to copy.');
+    copyNewButton.textContent = "No new usernames to copy.";
     return;
   }
   
@@ -1061,7 +1068,10 @@ copyNewButton.addEventListener('click', async () => {
   
   const textToCopy = urls.join('\n');
   await navigator.clipboard.writeText(textToCopy);
-  alert(`Copied ${urls.length} URL(s) to clipboard!`);
+  copyNewButton.textContent = `${urls.length} URL(s) copied to clipboard!`;
+  await setTimeout(() => {
+    copyNewButton.textContent = 'Copy New Usernames';
+  }, 500);
 });
 
 // Copy all usernames button
@@ -1070,7 +1080,7 @@ copyAllButton.addEventListener('click', async () => {
     const allUsernames = await getUsernamesFromGist();
     
     if (allUsernames.length === 0) {
-      alert('No usernames in Gist.');
+      copyAllButton.textContent = 'No usernames in Gist.';
       return;
     }
     
@@ -1081,9 +1091,13 @@ copyAllButton.addEventListener('click', async () => {
     
     const textToCopy = urls.join('\n');
     await navigator.clipboard.writeText(textToCopy);
-    alert(`Copied ${urls.length} URL(s) to clipboard!`);
+    copyAllButton.textContent = `${urls.length} URL(s) copied to clipboard!`;
   } catch (error) {
-    alert(`Error: ${error.message}`);
+    copyAllButton.textContent = `Error: ${error.message}`;
+  } finally {
+    await setTimeout(() => {
+      copyAllButton.textContent = 'Copy All Usernames';
+    }, 500);
   }
 });
 
@@ -1229,19 +1243,24 @@ copyAllTodoButton.addEventListener('click', async () => {
     const allUrls = await getTodoUrlsFromGist();
     
     if (allUrls.length === 0) {
-      alert('No URLs in todo list.');
+      copyAllTodoButton.textContent = 'No URLs in todo list.';
       return;
     }
     
     const textToCopy = allUrls.join('\n');
     await navigator.clipboard.writeText(textToCopy);
-    alert(`Copied ${allUrls.length} URL(s) to clipboard!`);
+    copyAllTodoButton.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
+    await setTimeout(() => {
+      copyAllTodoButton.textContent = 'Copy All Todo URLs';
+    }, 500);
   } catch (error) {
     console.error('Error copying all todo URLs:', error);
-    alert(`Error: ${error.message}`);
+    copyAllTodoButton.textContent = `Error: ${error.message}`;
   } finally {
-    copyAllTodoButton.disabled = false;
-    copyAllTodoButton.textContent = 'Copy All Todo URLs';
+    await setTimeout(() => {
+      copyAllTodoButton.textContent = 'Copy All Todo URLs';
+      copyAllTodoButton.disabled = false;
+    }, 500);
   }
 });
 
@@ -1254,19 +1273,21 @@ copyAllTodoButton.addEventListener('click', async () => {
     const allUrls = await getTodoUrlsFromGist();
     
     if (allUrls.length === 0) {
-      alert('No URLs in todo list.');
+      copyAllTodoButton.textContent = 'No URLs in todo list.';
       return;
     }
     
     const textToCopy = allUrls.join('\n');
     await navigator.clipboard.writeText(textToCopy);
-    alert(`Copied ${allUrls.length} URL(s) to clipboard!`);
+    copyAllTodoButton.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
   } catch (error) {
     console.error('Error copying all todo URLs:', error);
-    alert(`Error: ${error.message}`);
+    copyAllTodoButton.textContent = `Error: ${error.message}`;
   } finally {
-    copyAllTodoButton.disabled = false;
-    copyAllTodoButton.textContent = 'Copy All Todo URLs';
+    await setTimeout(() => {
+      copyAllTodoButton.disabled = false;
+      copyAllTodoButton.textContent = 'Copy All Todo URLs';
+    }, 500);
   }
 });
 
@@ -1274,7 +1295,7 @@ copyAllTodoButton.addEventListener('click', async () => {
 saveTodoButton.addEventListener('click', async () => {
   const inputText = manualTodoUrls.value.trim();
   if (!inputText) {
-    alert('Please enter at least one URL.');
+    saveTodoButton.textContent = 'Please enter at least one URL.';
     return;
   }
   
@@ -1291,7 +1312,7 @@ saveTodoButton.addEventListener('click', async () => {
     .filter(url => url !== null);
   
   if (urls.length === 0) {
-    alert('No valid URLs found.');
+    saveTodoButton.textContent = 'No valid URLs found.';
     return;
   }
   
@@ -1301,18 +1322,20 @@ saveTodoButton.addEventListener('click', async () => {
     const newUrls = await saveUrlsToTodo(urls);
     
     if (newUrls.length > 0) {
-      alert(`Added ${newUrls.length} new URL(s) to todo!`);
+      saveTodoButton.textContent = `${newUrls.length} new URL(s) added to todo!`;
       manualTodoUrls.value = '';
       await loadTodoCount();
     } else {
-      alert('All URLs already exist in todo.');
+      saveTodoButton.textContent = "All URLs already exist in todo.";
     }
   } catch (error) {
     console.error('Error saving todo:', error);
-    alert(`Error: ${error.message}`);
+    saveTodoButton.textContent = `Error: ${error.message}`;
   } finally {
-    saveTodoButton.disabled = false;
-    saveTodoButton.textContent = 'Add to Todo';
+    await setTimeout(() => {
+      saveTodoButton.disabled = false;
+      saveTodoButton.textContent = 'Add to Todo';
+    }, 500);
   }
 });
 
@@ -1325,7 +1348,10 @@ processTodoButton.addEventListener('click', async () => {
     const urls = await getTodoUrlsFromGist();
     
     if (urls.length === 0) {
-      alert('No URLs in todo list.');
+      processTodoButton.textContent = "No URLs in todo list.";
+      await setTimeout(() => {
+        processTodoButton.textContent = 'Process 20 URLs (Open + Copy)';
+      }, 500);
       return;
     }
     
@@ -1342,30 +1368,40 @@ processTodoButton.addEventListener('click', async () => {
     // Remove from todo FIRST (before opening, so it happens even if opening fails)
     try {
       await removeUrlsFromTodo(urlsToProcess);
-      console.log('Removed URLs from todo');
+      processTodoButton.textContent = 'Removed URLs from todo';
     } catch (error) {
       console.error('Error removing URLs from todo:', error);
-      alert(`Error removing URLs: ${error.message}`);
+      processTodoButton.textContent = `Error removing URLs: ${error.message}`;
       return; // Don't continue if removal fails
+    } finally {
+      await setTimeout(() => {
+        processTodoButton.textContent = 'Process 20 URLs (Open + Copy)';
+      }, 500);
     }
     
     // Open in browser (after removal, so removal always happens)
     try {
       const opened = await openUrlsInBrowser(urlsToProcess);
-      console.log(`Opened ${opened} URLs in browser`);
+      processTodoButton.textContent = `${opened} URLs opened in browser`;
     } catch (error) {
       console.error('Error opening URLs:', error);
       // Continue even if opening fails - removal already happened
+      await setTimeout(() => {
+        processTodoButton.textContent = `Error opening URLs: ${error.message}`;
+      }, 500);
+      return; // Don't continue if opening fails
     }
     
     await loadTodoCount();
-    alert(`Processed ${urlsToProcess.length} URL(s)! Removed from todo, opened in browser, and copied to clipboard.`);
+    processTodoButton.textContent = `${urlsToProcess.length} URL(s)! Removed from todo, opened in browser, and copied to clipboard.`;
   } catch (error) {
     console.error('Error processing todo:', error);
-    alert(`Error: ${error.message}`);
+    processTodoButton.textContent = `Error: ${error.message}`;
   } finally {
-    processTodoButton.disabled = false;
-    processTodoButton.textContent = 'Process 20 URLs (Open + Copy)';
+    await setTimeout(() => {
+      processTodoButton.disabled = false;
+      processTodoButton.textContent = 'Process 20 URLs (Open + Copy)';
+    }, 500);
   }
 });
 
@@ -1373,7 +1409,7 @@ processTodoButton.addEventListener('click', async () => {
 saveFinalButton.addEventListener('click', async () => {
   const inputText = manualFinalUrls.value.trim();
   if (!inputText) {
-    alert('Please enter at least one URL.');
+    saveFinalButton.textContent = 'Please enter at least one URL.';
     return;
   }
   
@@ -1392,7 +1428,7 @@ saveFinalButton.addEventListener('click', async () => {
     .filter(url => url !== null && url.includes('/freelancers/'));
   
   if (urls.length === 0) {
-    alert('No valid freelancer URLs found.');
+    saveFinalButton.textContent = 'No valid freelancer URLs found.';
     return;
   }
   
@@ -1402,18 +1438,20 @@ saveFinalButton.addEventListener('click', async () => {
     const newUrls = await addUrlsToFinal(urls);
     
     if (newUrls.length > 0) {
-      alert(`Added ${newUrls.length} new URL(s) to final list!`);
+      saveFinalButton.textContent = `${newUrls.length} new URL(s) added to final list!`;
       manualFinalUrls.value = '';
       await loadFinalCount();
     } else {
-      alert('All URLs already exist in final list.');
+      saveFinalButton.textContent = 'All URLs already exist in final list.';
     }
   } catch (error) {
     console.error('Error saving final:', error);
-    alert(`Error: ${error.message}`);
+    saveFinalButton.textContent = `Error: ${error.message}`;
   } finally {
-    saveFinalButton.disabled = false;
-    saveFinalButton.textContent = 'Add to Final';
+    await setTimeout(() => {
+      saveFinalButton.disabled = false;
+      saveFinalButton.textContent = 'Add to Final';
+    }, 500);
   }
 });
 
@@ -1427,7 +1465,7 @@ scanFinalButton.addEventListener('click', async () => {
     const response = await chrome.runtime.sendMessage({ action: 'scanAllTabs' });
     
     if (!response) {
-      alert('No response from background script. Please try again.');
+      scanFinalButton.textContent = 'No response from background script. Please try again.';
       return;
     }
     
@@ -1482,7 +1520,7 @@ scanFinalButton.addEventListener('click', async () => {
       console.log(`Found ${uniqueUrls.length} unique freelancer URLs:`, uniqueUrls);
       
       if (uniqueUrls.length === 0) {
-        alert('No freelancer URLs found in tabs. Make sure you have Fiverr pages with profile links open.');
+        scanFinalButton.textContent = 'No freelancer URLs found in tabs. Make sure you have Fiverr pages with profile links open.';
         return;
       }
       
@@ -1505,20 +1543,22 @@ scanFinalButton.addEventListener('click', async () => {
       }
       
       if (newUrls.length > 0) {
-        alert(`Added ${newUrls.length} new freelancer URL(s) to final list! Closed scanned tabs.`);
+        scanFinalButton.textContent = `${newUrls.length} new freelancer URL(s) added to final list! Closed scanned tabs.`;
         await loadFinalCount();
       } else {
-        alert(`Found ${uniqueUrls.length} freelancer URL(s), but all already exist in final list. Closed scanned tabs.`);
+        scanFinalButton.textContent = `Found ${uniqueUrls.length} freelancer URL(s), but all already exist in final list. Closed scanned tabs.`;
       }
     } else {
-      alert('No URLs found in any tabs. Make sure you have Fiverr pages open.');
+      scanFinalButton.textContent = 'No URLs found in any tabs. Make sure you have Fiverr pages open.';
     }
   } catch (error) {
     console.error('Error scanning for final:', error);
-    alert(`Error: ${error.message}`);
+    scanFinalButton.textContent = `Error: ${error.message}`;
   } finally {
-    scanFinalButton.disabled = false;
-    scanFinalButton.textContent = 'Scan Tabs & Add to Final';
+    await setTimeout(() => {
+      scanFinalButton.disabled = false;
+      scanFinalButton.textContent = 'Scan Tabs & Add to Final';
+    }, 500);
   }
 });
 
@@ -1588,19 +1628,21 @@ copyAllFinalButton.addEventListener('click', async () => {
     const allUrls = await getFinalUrlsFromGist();
     
     if (allUrls.length === 0) {
-      alert('No URLs in final list.');
+      copyAllFinalButton.textContent = 'No URLs in final list.';
       return;
     }
     
     const textToCopy = allUrls.join('\n');
     await navigator.clipboard.writeText(textToCopy);
-    alert(`Copied ${allUrls.length} URL(s) to clipboard!`);
+    copyAllFinalButton.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
   } catch (error) {
     console.error('Error copying all final URLs:', error);
-    alert(`Error: ${error.message}`);
+    copyAllFinalButton.textContent = `Error: ${error.message}`;
   } finally {
-    copyAllFinalButton.disabled = false;
-    copyAllFinalButton.textContent = 'Copy All Final URLs';
+    await setTimeout(() => {
+      copyAllFinalButton.disabled = false;
+      copyAllFinalButton.textContent = 'Copy All Final URLs';
+    }, 500);
   }
 });
 
@@ -1614,7 +1656,7 @@ copyFinalButton.addEventListener('click', async () => {
     const allUrls = await getFinalUrlsFromGist();
     
     if (allUrls.length === 0) {
-      alert('No URLs in final list.');
+      copyFinalButton.textContent = 'No URLs in final list.';
       return;
     }
     
@@ -1630,13 +1672,15 @@ copyFinalButton.addEventListener('click', async () => {
     console.log('Removed URLs from final list');
     
     await loadFinalCount();
-    alert(`Copied ${urlsToCopy.length} URL(s) to clipboard and removed from final list!`);
+    copyFinalButton.textContent = `${urlsToCopy.length} URL(s) copied to clipboard and removed from final list!`;
   } catch (error) {
     console.error('Error copying final URLs:', error);
-    alert(`Error: ${error.message}`);
+    copyFinalButton.textContent = `Error: ${error.message}`;
   } finally {
-    copyFinalButton.disabled = false;
-    copyFinalButton.textContent = 'Copy URLs';
+    await setTimeout(() => {
+      copyFinalButton.disabled = false;
+      copyFinalButton.textContent = 'Copy URLs';
+    }, 500);
   }
 });
 
@@ -1650,7 +1694,7 @@ openFinalButton.addEventListener('click', async () => {
     const allUrls = await getFinalUrlsFromGist();
     
     if (allUrls.length === 0) {
-      alert('No URLs in final list.');
+      openFinalButton.textContent = 'No URLs in final list.';
       return;
     }
     
@@ -1662,7 +1706,10 @@ openFinalButton.addEventListener('click', async () => {
       console.log('Removed URLs from final list');
     } catch (error) {
       console.error('Error removing URLs from final:', error);
-      alert(`Error removing URLs: ${error.message}`);
+      openFinalButton.textContent = `Error removing URLs: ${error.message}`;
+      await setTimeout(() => {
+        openFinalButton.textContent = 'Open Tabs';
+      }, 500);
       return; // Don't continue if removal fails
     }
     
@@ -1676,13 +1723,15 @@ openFinalButton.addEventListener('click', async () => {
     }
     
     await loadFinalCount();
-    alert(`Opened ${urlsToOpen.length} URL(s) in browser and removed from final list!`);
+    openFinalButton.textContent = `${urlsToOpen.length} URL(s) in browser and removed from final list!`;
   } catch (error) {
     console.error('Error opening final URLs:', error);
-    alert(`Error: ${error.message}`);
+    openFinalButton.textContent = `Error: ${error.message}`;
   } finally {
-    openFinalButton.disabled = false;
-    openFinalButton.textContent = 'Open Tabs';
+    await setTimeout(() => {
+      openFinalButton.disabled = false;
+      openFinalButton.textContent = 'Open Tabs';
+    }, 500);
   }
 });
 
