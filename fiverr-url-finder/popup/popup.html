@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fiverr URL Finder</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="header">
+    <img src="../assets/icon-128.png" alt="Fiverr URL Finder" class="header-icon">
+    <div class="header-content">
+      <h1 class="header-title">Fiverr URL Finder</h1>
+      <p class="header-description">Find and collect Fiverr profile URLs from all browser tabs</p>
+    </div>
+  </div>
+  <div class="container">    
+    <div class="section">
+      <h2>GitHub Gist Configuration</h2>
+      <input type="password" id="githubToken" placeholder="GitHub Personal Access Token" class="input-field">
+      <input type="text" id="gistId" placeholder="Gist ID (leave empty to create new)" class="input-field">
+      <button id="saveConfigButton" class="btn btn-secondary">Save Configuration</button>
+    </div>
+    
+    <div class="section">
+      <button id="scanButton" class="btn btn-primary">Scan All Tabs</button>
+    </div>
+
+    <div class="section">
+      <h2>Manual Username Input</h2>
+      <textarea id="manualUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
+      <button id="saveManualButton" class="btn btn-secondary">Save Usernames</button>
+    </div>
+
+    <div class="section">
+      <h2>New Usernames Found</h2>
+      <div id="newUrlsContainer">
+        <p class="no-urls">No new usernames yet</p>
+      </div>
+      <button id="copyNewButton" class="btn btn-success" style="display: none;">Copy New Usernames</button>
+    </div>
+
+    <div class="section">
+      <h2>All Usernames</h2>
+      <p id="totalCount">Total usernames in Gist: 0</p>
+      <button id="copyAllButton" class="btn btn-info">Copy All Usernames</button>
+    </div>
+
+    <div class="section">
+      <h2>Todo List</h2>
+      <p id="todoCount">Total URLs in Todo: 0</p>
+      <textarea id="manualTodoUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
+      <button id="saveTodoButton" class="btn btn-secondary">Add to Todo</button>
+      <button id="copyAllTodoButton" class="btn btn-info">Copy All Todo URLs</button>
+      <button id="processTodoButton" class="btn btn-warning">Process 20 URLs (Open + Copy)</button>
+    </div>
+
+    <div class="section">
+      <h2>Final List</h2>
+      <p id="finalCount">Total URLs in Final: 0</p>
+      <textarea id="manualFinalUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
+      <button id="saveFinalButton" class="btn btn-secondary">Add to Final</button>
+      <button id="copyAllFinalButton" class="btn btn-info">Copy All Final URLs</button>
+      <button id="scanFinalButton" class="btn btn-primary">Scan Tabs & Add to Final</button>
+      <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+        <label for="finalNumber" style="font-size: 14px;">Count:</label>
+        <input type="number" id="finalNumber" value="12" min="1" max="100" style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+        <button id="copyFinalButton" class="btn btn-success" style="flex: 1;">Copy URLs</button>
+        <button id="openFinalButton" class="btn btn-info" style="flex: 1;">Open Tabs</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+

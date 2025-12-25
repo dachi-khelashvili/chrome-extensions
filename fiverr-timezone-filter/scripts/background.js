@@ -2,17 +2,42 @@
 
 const tabTimeInfo = {};
 
-// Set side panel behavior immediately when service worker loads
+// Get display mode preference (sidebar or popup)
+async function getDisplayMode() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["displayMode"], (result) => {
+      resolve(result.displayMode || "popup");
+    });
+  });
+}
+
+// Set display mode preference
+async function setDisplayMode(mode) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ displayMode: mode }, () => {
+      resolve();
+    });
+  });
+}
+
+// Set side panel behavior based on display mode
 async function setupSidePanel() {
-  if (chrome.sidePanel) {
+  const displayMode = await getDisplayMode();
+  
+  if (displayMode === "sidebar" && chrome.sidePanel) {
     try {
       await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
       console.log("Side panel behavior set successfully");
     } catch (error) {
       console.error("Error setting side panel behavior:", error);
     }
-  } else {
-    console.warn("Side Panel API not available. Chrome version might be too old (requires Chrome 114+).");
+  } else if (displayMode === "popup" && chrome.sidePanel) {
+    try {
+      await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+      console.log("Side panel behavior disabled (popup mode)");
+    } catch (error) {
+      console.error("Error disabling side panel behavior:", error);
+    }
   }
 }
 
@@ -326,6 +351,45 @@ function getPreferredLocation() {
   });
 }
 
+function getLanguageCountThreshold() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["languageCountThreshold"], (result) => {
+      resolve(result.languageCountThreshold !== undefined ? result.languageCountThreshold : 3);
+    });
+  });
+}
+
+function setLanguageCountThreshold(threshold) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ languageCountThreshold: threshold }, () => {
+      resolve();
+    });
+  });
+}
+
+function getImageSize() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(["imageSize"], (result) => {
+      // Default to 40px if not set
+      const defaultSize = 40;
+      const validSizes = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 240];
+      const savedSize = result.imageSize !== undefined ? result.imageSize : defaultSize;
+      // If saved size is not in the list, find the closest valid size
+      const size = validSizes.includes(savedSize) ? savedSize : 
+        validSizes.reduce((prev, curr) => Math.abs(curr - savedSize) < Math.abs(prev - savedSize) ? curr : prev);
+      resolve(size);
+    });
+  });
+}
+
+function setImageSize(size) {
+  return new Promise((resolve) => {
+    chrome.storage.local.set({ imageSize: size }, () => {
+      resolve();
+    });
+  });
+}
+
 function setPreferredLocation(country) {
   return new Promise((resolve) => {
     chrome.storage.local.set({ preferredLocation: country }, () => {
@@ -393,14 +457,32 @@ chrome.runtime.onStartup.addListener(() => {
   });
 });
 
-// Fallback: Explicitly open side panel when action is clicked
-// This ensures it works even if setPanelBehavior doesn't work
+// Handle action click based on display mode
 chrome.action.onClicked.addListener(async (tab) => {
-  if (chrome.sidePanel) {
+  const displayMode = await getDisplayMode();
+  
+  if (displayMode === "popup") {
+    // Open as popup window
     try {
-      await chrome.sidePanel.open({ tabId: tab.id });
+      const url = chrome.runtime.getURL("popup/index.html");
+      await chrome.windows.create({
+        url: url,
+        type: "popup",
+        width: 520,
+        height: 600,
+        focused: true
+      });
     } catch (error) {
-      console.error("Error opening side panel:", error);
+      console.error("Error opening popup window:", error);
+    }
+  } else {
+    // Open side panel (fallback if setPanelBehavior didn't work)
+    if (chrome.sidePanel) {
+      try {
+        await chrome.sidePanel.open({ tabId: tab.id });
+      } catch (error) {
+        console.error("Error opening side panel:", error);
+      }
     }
   }
 });
@@ -408,7 +490,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "LOCAL_TIME_INFO" && sender.tab) {
     const tabId = sender.tab.id;
-    const { localTimeText, offsetMinutes, hours24, minutes, imageUrl, freelancerName } = message;
+    const { localTimeText, offsetMinutes, hours24, minutes, imageUrl, freelancerName, location, locationText, languages, languagesText } = message;
     const tz = getTimezoneInfo(offsetMinutes);
     
     getPreferredLocation().then(preferredLocation => {
@@ -426,7 +508,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         hasLocalTime: true,
         isPreferredLocation: preferredLocation ? ((tz.rawCountries && tz.rawCountries.length > 0 ? tz.rawCountries : tz.countries) || []).some(c => matchesPreferredLocation(c, preferredLocation)) : false,
         imageUrl: imageUrl || "",
-        freelancerName: freelancerName || ""
+        freelancerName: freelancerName || "",
+        location: location || "",
+        locationText: locationText || "",
+        languages: languages || [],
+        languagesText: languagesText || "",
+        languageCount: (languages || []).length
       };
       sendResponse({ status: "ok" });
     });
@@ -435,7 +522,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "NO_LOCAL_TIME" && sender.tab) {
     const tabId = sender.tab.id;
-    const { imageUrl, freelancerName } = message;
+    const { imageUrl, freelancerName, location, locationText, languages, languagesText } = message;
 
     tabTimeInfo[tabId] = {
       tabId,
@@ -444,7 +531,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       hasLocalTime: false,
       isPreferredLocation: false,
       imageUrl: imageUrl || "",
-      freelancerName: freelancerName || ""
+      freelancerName: freelancerName || "",
+      location: location || "",
+      locationText: locationText || "",
+      languages: languages || [],
+      languagesText: languagesText || "",
+      languageCount: (languages || []).length
     };
 
     sendResponse({ status: "ok" });
@@ -465,7 +557,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               hasLocalTime: false,
               isPreferredLocation: false,
               imageUrl: "",
-              freelancerName: ""
+              freelancerName: "",
+              location: "",
+              locationText: "",
+              languages: [],
+              languagesText: "",
+              languageCount: 0
             };
           }
         });
@@ -543,6 +640,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === "GET_DISPLAY_MODE") {
+    getDisplayMode().then(displayMode => {
+      sendResponse({ displayMode });
+    });
+    return true;
+  }
+
+  if (message.type === "SET_DISPLAY_MODE") {
+    setDisplayMode(message.mode || "sidebar").then(() => {
+      setupSidePanel(); // Update side panel behavior
+      sendResponse({ status: "ok" });
+    });
+    return true;
+  }
+
   if (message.type === "CLOSE_TABS_NOT_IN_COUNTRY") {
     const rawCountry = (message.country || "").trim().toLowerCase();
     if (!rawCountry) {
@@ -575,7 +687,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "CLOSE_TABS_NOT_IN_PREFERRED_LOCATION") {
-    getPreferredLocation().then(preferredLocation => {
+    Promise.all([getPreferredLocation(), getLanguageCountThreshold()]).then(([preferredLocation, languageThreshold]) => {
       if (!preferredLocation) {
         sendResponse({ closed: 0 });
         return;
@@ -586,7 +698,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       for (const [tabIdStr, info] of Object.entries(tabTimeInfo)) {
         // Close tabs that are NOT in preferred location
         // This includes tabs with no local time and tabs not matching preferred location
-        if (!info.isPreferredLocation) {
+        // Also close tabs with language count > threshold
+        const shouldClose = !info.isPreferredLocation || 
+                           (info.languageCount !== undefined && info.languageCount > languageThreshold);
+        
+        if (shouldClose) {
           toClose.push(Number(tabIdStr));
         }
       }
@@ -602,6 +718,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ closed: 0 });
       }
     });
+    return true;
+  }
+
+  if (message.type === "GET_LANGUAGE_COUNT_THRESHOLD") {
+    getLanguageCountThreshold().then(threshold => {
+      sendResponse({ threshold });
+    });
+    return true;
+  }
+
+  if (message.type === "SET_LANGUAGE_COUNT_THRESHOLD") {
+    const threshold = parseInt(message.threshold, 10);
+    if (!isNaN(threshold) && threshold >= 0) {
+      setLanguageCountThreshold(threshold).then(() => {
+        sendResponse({ status: "ok" });
+      });
+    } else {
+      sendResponse({ status: "error", message: "Invalid threshold value" });
+    }
+    return true;
+  }
+
+  if (message.type === "GET_IMAGE_SIZE") {
+    getImageSize().then(size => {
+      sendResponse({ size });
+    });
+    return true;
+  }
+
+  if (message.type === "SET_IMAGE_SIZE") {
+    const size = parseInt(message.size, 10);
+    const validSizes = [20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 240];
+    if (!isNaN(size) && validSizes.includes(size)) {
+      setImageSize(size).then(() => {
+        sendResponse({ status: "ok" });
+      });
+    } else {
+      sendResponse({ status: "error", message: "Invalid image size value (must be one of: 20, 30, 40, 50, 60, 80, 100, 120, 150, 200, 240)" });
+    }
     return true;
   }
 

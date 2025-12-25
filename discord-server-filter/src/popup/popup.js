@@ -12,18 +12,12 @@
     template: document.getElementById('row-template')
   };
 
-  // Constants for server finding
-  const SELECTORS = {
-    card: "div.container__4cb8a",
-    title: "h2.defaultColor__4bd52.heading-md\\/semibold_cf4812.defaultColor__5345c.guildName__4cb8a",
-    overview: "div.text-sm\\/normal_cf4812.description__4cb8a",
-    invite: "div.text-xs\\/normal_cf4812.memberDetailsText__4cb8a"
-  };
+  // Constants
   const MIN_COUNT = 500;
 
   // Pre-compiled regex for performance
   const ASCII_REGEX = /^[\x00-\x7F]*$/;
-  const JOIN_COUNT_REGEX = /([\d.,]+)\s*([km])?\b/;
+  const JOIN_COUNT_REGEX = /([\d.,]+)\s*([km])?\s*(members?|joined|online|users?)/i;
   const LETTERS_REGEX = /[^A-Za-z]/g;
 
   // Helper functions
@@ -49,11 +43,24 @@
 
   function parseJoinCount(raw) {
     if (!raw) return 0;
-    const match = raw.toLowerCase().match(JOIN_COUNT_REGEX);
-    if (!match) return 0;
+    // Try multiple patterns
+    let match = raw.toLowerCase().match(JOIN_COUNT_REGEX);
+    if (!match) {
+      // Fallback: look for number followed by k/m
+      match = raw.toLowerCase().match(/([\d.,]+)\s*([km])\b/);
+    }
+    if (!match) {
+      // Fallback: look for any number in the text
+      match = raw.match(/([\d.,]+)/);
+      if (match) {
+        const num = parseFloat(match[1].replace(/,/g, ""));
+        return isNaN(num) ? 0 : Math.round(num);
+      }
+      return 0;
+    }
     const num = parseFloat(match[1].replace(/,/g, ""));
     if (isNaN(num)) return 0;
-    const suffix = match[2];
+    const suffix = match[2]?.toLowerCase();
     if (suffix === "k") return Math.round(num * 1000);
     if (suffix === "m") return Math.round(num * 1000000);
     return Math.round(num);
@@ -91,17 +98,101 @@
       const results = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
-          const SELECTORS = {
-            card: "div.container__4cb8a",
-            title: "h2.defaultColor__4bd52.heading-md\\/semibold_cf4812.defaultColor__5345c.guildName__4cb8a",
-            overview: "div.text-sm\\/normal_cf4812.description__4cb8a",
-            invite: "div.text-xs\\/normal_cf4812.memberDetailsText__4cb8a"
-          };
-
           const ASCII_REGEX = /^[\x00-\x7F]*$/;
-          const JOIN_COUNT_REGEX = /([\d.,]+)\s*([km])?\b/;
+          const JOIN_COUNT_REGEX = /([\d.,]+)\s*([km])?\s*(members?|joined|online|users?)/i;
           const LETTERS_REGEX = /[^A-Za-z]/g;
           const MIN_COUNT = 500;
+
+          // Flexible selector functions with fallbacks
+          function findServerCards() {
+            // Try multiple strategies to find server cards
+            let cards = Array.from(document.querySelectorAll('div[class*="container"]')).filter(el => {
+              const hasTitle = el.querySelector('h2, h3') !== null;
+              const hasDescription = Array.from(el.querySelectorAll('div')).some(div => 
+                div.textContent && div.textContent.length > 20 && div.textContent.length < 500
+              );
+              return hasTitle && hasDescription;
+            });
+
+            if (cards.length === 0) {
+              const grid = document.querySelector('[class*="grid"], [class*="list"], [class*="container"]');
+              if (grid) {
+                cards = Array.from(grid.children).filter(el => {
+                  if (el.tagName !== 'DIV') return false;
+                  const text = el.textContent || '';
+                  return /members?|joined|online/i.test(text) && text.length > 50;
+                });
+              }
+            }
+
+            if (cards.length === 0) {
+              cards = Array.from(document.querySelectorAll('div')).filter(el => {
+                const text = el.textContent || '';
+                const hasMemberInfo = /([\d.,]+)\s*(k|m)?\s*members?/i.test(text);
+                const hasTitle = el.querySelector('h2, h3, [class*="title"], [class*="name"]') !== null;
+                return hasMemberInfo && hasTitle && el.children.length >= 2;
+              });
+            }
+
+            return cards;
+          }
+
+          function findCardTitle(card) {
+            let titleEl = card.querySelector('h2, h3');
+            if (!titleEl) {
+              titleEl = card.querySelector('[class*="title"], [class*="name"], [class*="guild"]');
+            }
+            if (!titleEl) {
+              const headings = card.querySelectorAll('*');
+              for (let i = 0; i < headings.length; i++) {
+                const el = headings[i];
+                const text = el.textContent?.trim() || '';
+                if (text.length > 0 && text.length < 100 && !/[0-9]+\s*(k|m)?\s*members?/i.test(text)) {
+                  const style = window.getComputedStyle(el);
+                  if (parseFloat(style.fontSize) >= 16 || el.tagName.match(/^H[1-6]$/)) {
+                    titleEl = el;
+                    break;
+                  }
+                }
+              }
+            }
+            return titleEl;
+          }
+
+          function findCardOverview(card) {
+            let overviewEl = card.querySelector('[class*="description"], [class*="overview"]');
+            if (!overviewEl) {
+              const divs = card.querySelectorAll('div');
+              for (let i = 0; i < divs.length; i++) {
+                const el = divs[i];
+                const text = el.textContent?.trim() || '';
+                if (text.length > 20 && text.length < 500 && !/[0-9]+\s*(k|m)?\s*members?/i.test(text)) {
+                  const hasTitle = el.querySelector('h2, h3') === null;
+                  if (hasTitle) {
+                    overviewEl = el;
+                    break;
+                  }
+                }
+              }
+            }
+            return overviewEl;
+          }
+
+          function findCardMemberInfo(card) {
+            let memberEl = card.querySelector('[class*="member"], [class*="count"], [class*="invite"]');
+            if (!memberEl) {
+              const allElements = card.querySelectorAll('*');
+              for (let i = 0; i < allElements.length; i++) {
+                const el = allElements[i];
+                const text = el.textContent || '';
+                if (/([\d.,]+)\s*(k|m)?\s*members?/i.test(text) || /([\d.,]+)\s*(k|m)?\s*joined/i.test(text)) {
+                  memberEl = el;
+                  break;
+                }
+              }
+            }
+            return memberEl;
+          }
 
           function isEnglishOnly(text) {
             if (!text) return false;
@@ -125,41 +216,66 @@
 
           function parseJoinCount(raw) {
             if (!raw) return 0;
-            const match = raw.toLowerCase().match(JOIN_COUNT_REGEX);
-            if (!match) return 0;
+            // Try multiple patterns
+            let match = raw.toLowerCase().match(JOIN_COUNT_REGEX);
+            if (!match) {
+              // Fallback: look for number followed by k/m
+              match = raw.toLowerCase().match(/([\d.,]+)\s*([km])\b/);
+            }
+            if (!match) {
+              // Fallback: look for any number in the text
+              match = raw.match(/([\d.,]+)/);
+              if (match) {
+                const num = parseFloat(match[1].replace(/,/g, ""));
+                return isNaN(num) ? 0 : Math.round(num);
+              }
+              return 0;
+            }
             const num = parseFloat(match[1].replace(/,/g, ""));
             if (isNaN(num)) return 0;
-            const suffix = match[2];
+            const suffix = match[2]?.toLowerCase();
             if (suffix === "k") return Math.round(num * 1000);
             if (suffix === "m") return Math.round(num * 1000000);
             return Math.round(num);
           }
 
           function evaluateCard(card) {
-            const titleEl = card.querySelector(SELECTORS.title);
-            const overviewEl = card.querySelector(SELECTORS.overview);
-            const inviteEl = card.querySelector(SELECTORS.invite);
+            try {
+              const titleEl = findCardTitle(card);
+              const overviewEl = findCardOverview(card);
+              const inviteEl = findCardMemberInfo(card);
 
-            const title = titleEl?.textContent?.trim() || "";
-            const overview = overviewEl?.textContent?.trim() || "";
-            const inviteText = inviteEl?.textContent?.trim() || "";
+              const title = titleEl?.textContent?.trim() || "";
+              const overview = overviewEl?.textContent?.trim() || "";
+              const inviteText = inviteEl?.textContent?.trim() || "";
 
-            const englishOk = isEnglishOnly(title) && isEnglishOnly(overview);
-            const count = parseJoinCount(inviteText);
-            const eligible = englishOk && count > MIN_COUNT;
+              if (!title && !overview) {
+                return null;
+              }
 
-            const titleNonEnglish = findNonEnglishChars(title);
-            const overviewNonEnglish = findNonEnglishChars(overview);
-            const allNonEnglish = [...new Set([...titleNonEnglish, ...overviewNonEnglish])];
+              const englishOk = isEnglishOnly(title) && isEnglishOnly(overview);
+              const count = parseJoinCount(inviteText);
+              const eligible = englishOk && count > MIN_COUNT;
 
-            return { title, overview, inviteText, count, englishOk, eligible, nonEnglishChars: allNonEnglish };
+              const titleNonEnglish = findNonEnglishChars(title);
+              const overviewNonEnglish = findNonEnglishChars(overview);
+              const allNonEnglish = [...new Set([...titleNonEnglish, ...overviewNonEnglish])];
+
+              return { title, overview, inviteText, count, englishOk, eligible, nonEnglishChars: allNonEnglish };
+            } catch (e) {
+              console.warn('[DSBF] Error evaluating card:', e);
+              return null;
+            }
           }
 
-          const cards = document.querySelectorAll(SELECTORS.card);
+          const cards = findServerCards();
           const data = [];
           for (let i = 0; i < cards.length; i++) {
             try {
-              data.push(evaluateCard(cards[i]));
+              const result = evaluateCard(cards[i]);
+              if (result) {
+                data.push(result);
+              }
             } catch (e) {
               console.error('Error evaluating card:', e);
             }
