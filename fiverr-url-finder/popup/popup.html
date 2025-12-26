@@ -18,56 +18,60 @@
     <div class="section">
       <h2>GitHub Gist Configuration</h2>
       <input type="password" id="githubToken" placeholder="GitHub Personal Access Token" class="input-field">
-      <input type="text" id="gistId" placeholder="Gist ID (leave empty to create new)" class="input-field">
-      <button id="saveConfigButton" class="btn btn-secondary">Save Configuration</button>
+      <button id="saveConfigButton" class="btn btn-primary">Save Configuration</button>
     </div>
     
-    <div class="section">
-      <button id="scanButton" class="btn btn-primary">Scan All Tabs</button>
-    </div>
-
-    <div class="section">
-      <h2>Manual Username Input</h2>
-      <textarea id="manualUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
-      <button id="saveManualButton" class="btn btn-secondary">Save Usernames</button>
-    </div>
-
-    <div class="section">
-      <h2>New Usernames Found</h2>
-      <div id="newUrlsContainer">
-        <p class="no-urls">No new usernames yet</p>
+    <div class="section" style="background: #edffff;">
+      <h2>All URL List</h2>
+      <div class="section-content">
+        <p id="totalCount">Total URLs in All: 0</p>
+        <button id="copyAllButton" class="btn-icon">
+          <p id="copyAllButtonText" style="display: none;"></p>
+          <img src="../assets/clipboard.svg" width="16px" height="16px" />
+        </button>
       </div>
-      <button id="copyNewButton" class="btn btn-success" style="display: none;">Copy New Usernames</button>
+      <p id="newUsernamesTitle" style="color: #666;">New URLs found</p>
+      <div id="newUrlsContainer">
+        <p class="no-urls">No new URLs yet</p>
+      </div>
+      <button id="copyNewButton" class="btn-icon" style="display: none;">Copy New URLs to clipboard</button>
+      <button id="scanButton" class="btn btn-primary">Scan All Tabs</button>
+      <textarea id="manualUrls" placeholder="Enter URLs (one per line)"></textarea>
+      <button id="saveManualButton" class="btn btn-secondary">Save URLs manually to the <b>All URL List</b></button>
     </div>
 
     <div class="section">
-      <h2>All Usernames</h2>
-      <p id="totalCount">Total usernames in Gist: 0</p>
-      <button id="copyAllButton" class="btn btn-info">Copy All Usernames</button>
+      <h2>Todo URL List</h2>
+      <div class="section-content">
+        <p id="todoCount">Total URLs in Todo: 0</p>
+        <button id="copyAllTodoButton" class="btn-icon">
+          <p id="copyAllTodoButtonText" style="display: none;"></p>
+          <img src="../assets/clipboard.svg" width="16px" height="16px" />
+        </button>  
+      </div>
+      <button id="processTodoButton" class="btn btn-primary">Process 20 URLs (Open + Copy)</button>
+      <textarea id="manualTodoUrls" placeholder="Enter URLs (one per line)"></textarea>
+      <button id="saveTodoButton" class="btn btn-secondary">Save URLs manually to the <b>Todo URL List</b></button>
     </div>
 
-    <div class="section">
-      <h2>Todo List</h2>
-      <p id="todoCount">Total URLs in Todo: 0</p>
-      <textarea id="manualTodoUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
-      <button id="saveTodoButton" class="btn btn-secondary">Add to Todo</button>
-      <button id="copyAllTodoButton" class="btn btn-info">Copy All Todo URLs</button>
-      <button id="processTodoButton" class="btn btn-warning">Process 20 URLs (Open + Copy)</button>
-    </div>
-
-    <div class="section">
-      <h2>Final List</h2>
-      <p id="finalCount">Total URLs in Final: 0</p>
-      <textarea id="manualFinalUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
-      <button id="saveFinalButton" class="btn btn-secondary">Add to Final</button>
-      <button id="copyAllFinalButton" class="btn btn-info">Copy All Final URLs</button>
+    <div class="section" style="background: #edffff;">
+      <h2>Final URL List</h2>
+      <div class="section-content">
+        <p id="finalCount">Total URLs in Final: 0</p>
+        <button id="copyAllFinalButton" class="btn-icon">
+          <p id="copyAllFinalButtonText" style="display: none;"></p>
+          <img src="../assets/clipboard.svg" width="16px" height="16px" />
+        </button>
+      </div>
       <button id="scanFinalButton" class="btn btn-primary">Scan Tabs & Add to Final</button>
       <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
         <label for="finalNumber" style="font-size: 14px;">Count:</label>
         <input type="number" id="finalNumber" value="12" min="1" max="100" style="width: 60px; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-        <button id="copyFinalButton" class="btn btn-success" style="flex: 1;">Copy URLs</button>
-        <button id="openFinalButton" class="btn btn-info" style="flex: 1;">Open Tabs</button>
+        <button id="copyFinalButton" class="btn btn-secondary" style="flex: 1;">Copy URLs</button>
+        <button id="openFinalButton" class="btn btn-primary" style="flex: 1;">Open Tabs</button>
       </div>
+      <textarea id="manualFinalUrls" placeholder="Enter URLs or usernames (one per line)"></textarea>
+      <button id="saveFinalButton" class="btn btn-secondary">Save URLs manually to the <b>Final URL List</b></button>
     </div>
   </div>
 

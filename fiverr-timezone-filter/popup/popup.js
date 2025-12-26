@@ -1321,7 +1321,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Predefined image sizes
-  const imageSizes = [40, 50, 60, 80, 100, 120, 150, 200, 240];
+  const imageSizes = [30, 60, 120, 240];
 
   // Zoom out image button
   const zoomOutImageButton = document.getElementById("zoom-out-image-button");
@@ -1338,6 +1338,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Get previous size (if at first, stay at first)
       const newIndex = Math.max(0, index - 1);
       const newSize = imageSizes[newIndex];
+
+      if (newIndex === 0) {
+        zoomOutImageButton.disabled = true;
+      }
+
+      if (newIndex === imageSizes.length - 2) {
+        zoomInImageButton.disabled = false;
+      }
 
       chrome.runtime.sendMessage(
         {
@@ -1369,6 +1377,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Get next size (if at last, stay at last)
       const newIndex = Math.min(imageSizes.length - 1, index + 1);
       const newSize = imageSizes[newIndex];
+
+      if (newIndex === imageSizes.length - 1) {
+        zoomInImageButton.disabled = true;
+      }
+
+      if (newIndex === 1) {
+        zoomOutImageButton.disabled = false;
+      }
 
       chrome.runtime.sendMessage(
         {
