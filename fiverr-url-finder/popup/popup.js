@@ -13,11 +13,13 @@ const saveConfigButton = document.getElementById('saveConfigButton');
 const manualTodoUrls = document.getElementById('manualTodoUrls');
 const saveTodoButton = document.getElementById('saveTodoButton');
 const copyAllTodoButton = document.getElementById('copyAllTodoButton');
+const copyAllTodoButtonText = document.getElementById('copyAllTodoButtonText');
 const processTodoButton = document.getElementById('processTodoButton');
 const todoCount = document.getElementById('todoCount');
 const manualFinalUrls = document.getElementById('manualFinalUrls');
 const saveFinalButton = document.getElementById('saveFinalButton');
 const copyAllFinalButton = document.getElementById('copyAllFinalButton');
+const copyAllFinalButtonText = document.getElementById('copyAllFinalButtonText');
 const scanFinalButton = document.getElementById('scanFinalButton');
 const finalCount = document.getElementById('finalCount');
 const finalNumber = document.getElementById('finalNumber');
@@ -1388,55 +1390,30 @@ async function removeUrlsFromTodo(urlsToRemove) {
 copyAllTodoButton.addEventListener('click', async () => {
   try {
     copyAllTodoButton.disabled = true;
-    copyAllTodoButton.textContent = 'Copying...';
+    copyAllTodoButtonText.style.display = 'block';
+    copyAllTodoButtonText.textContent = 'Copying...';
 
     const allUrls = await getTodoUrlsFromGist();
 
     if (allUrls.length === 0) {
-      copyAllTodoButton.textContent = 'No URLs in todo list.';
+      copyAllTodoButtonText.textContent = 'No URLs in todo list.';
       return;
     }
 
     const textToCopy = allUrls.join('\n');
     await navigator.clipboard.writeText(textToCopy);
-    copyAllTodoButton.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
+    copyAllTodoButtonText.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
     await setTimeout(() => {
-      copyAllTodoButton.textContent = 'Copy All Todo URLs';
+      copyAllTodoButtonText.style.display = 'none';
+      copyAllTodoButton.disabled = false;
     }, 500);
   } catch (error) {
     console.error('Error copying all todo URLs:', error);
-    copyAllTodoButton.textContent = `Error: ${error.message}`;
+    copyAllTodoButtonText.textContent = `Error: ${error.message}`;
   } finally {
     await setTimeout(() => {
-      copyAllTodoButton.textContent = 'Copy All Todo URLs';
+      copyAllTodoButtonText.style.display = 'none';
       copyAllTodoButton.disabled = false;
-    }, 500);
-  }
-});
-
-// Copy all todo URLs button
-copyAllTodoButton.addEventListener('click', async () => {
-  try {
-    copyAllTodoButton.disabled = true;
-    copyAllTodoButton.textContent = 'Copying...';
-
-    const allUrls = await getTodoUrlsFromGist();
-
-    if (allUrls.length === 0) {
-      copyAllTodoButton.textContent = 'No URLs in todo list.';
-      return;
-    }
-
-    const textToCopy = allUrls.join('\n');
-    await navigator.clipboard.writeText(textToCopy);
-    copyAllTodoButton.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
-  } catch (error) {
-    console.error('Error copying all todo URLs:', error);
-    copyAllTodoButton.textContent = `Error: ${error.message}`;
-  } finally {
-    await setTimeout(() => {
-      copyAllTodoButton.disabled = false;
-      copyAllTodoButton.textContent = 'Copy All Todo URLs';
     }, 500);
   }
 });
@@ -1779,25 +1756,26 @@ async function removeUrlsFromFinal(urlsToRemove) {
 copyAllFinalButton.addEventListener('click', async () => {
   try {
     copyAllFinalButton.disabled = true;
-    copyAllFinalButton.textContent = 'Copying...';
+    copyAllFinalButtonText.style.display = 'block';
+    copyAllFinalButtonText.textContent = 'Copying...';
 
     const allUrls = await getFinalUrlsFromGist();
 
     if (allUrls.length === 0) {
-      copyAllFinalButton.textContent = 'No URLs in final list.';
+      copyAllFinalButtonText.textContent = 'No URLs in final list.';
       return;
     }
 
     const textToCopy = allUrls.join('\n');
     await navigator.clipboard.writeText(textToCopy);
-    copyAllFinalButton.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
+    copyAllFinalButtonText.textContent = `${allUrls.length} URL(s) copied to clipboard!`;
   } catch (error) {
     console.error('Error copying all final URLs:', error);
-    copyAllFinalButton.textContent = `Error: ${error.message}`;
+    copyAllFinalButtonText.textContent = `Error: ${error.message}`;
   } finally {
     await setTimeout(() => {
+      copyAllFinalButtonText.style.display = 'none';
       copyAllFinalButton.disabled = false;
-      copyAllFinalButton.textContent = 'Copy All Final URLs';
     }, 500);
   }
 });

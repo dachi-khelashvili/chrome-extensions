@@ -784,6 +784,8 @@ async function renderTabs(tabs) {
       const refreshButton = document.createElement("button");
       refreshButton.className = "tiny-refresh-button";
       refreshButton.type = "button";
+      refreshButton.style.width = `${imageSize / 2}px`;
+      refreshButton.style.height = `${imageSize / 2}px`;
       refreshButton.title = "Refresh this tab";
       refreshButton.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

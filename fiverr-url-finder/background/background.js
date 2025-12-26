@@ -55,7 +55,7 @@ async function openTabs(urls) {
       opened++;
       // Small delay to avoid overwhelming the browser
       if (i < urls.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     } catch (error) {
       console.error(`Error opening tab ${i + 1}/${urls.length}:`, error);
