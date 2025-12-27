@@ -2,14 +2,19 @@
   "manifest_version": 3,
   "name": "Fiverr Navigator",
   "version": "1.0.0",
-  "description": "Navigate Fiverr contact list with Page Up/Page Down keys",
+  "description": "Navigate Fiverr contact list with Page Up/Page Down keys and send messages with shortcuts",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
+  "action": {
+    "default_popup": "popup/index.html"
+  },
   "content_scripts": [
     {
       "matches": [
         "https://pro.fiverr.com/inbox",
+        "https://pro.fiverr.com/inbox/",
         "https://pro.fiverr.com/inbox/*"
       ],
       "js": ["content.js"],

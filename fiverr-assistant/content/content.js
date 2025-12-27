@@ -1,6 +1,7 @@
 // Fiverr Assistant - Keyboard button clicker
 // Enter key: Clicks Message button
 // Space key: Clicks 👋 Hey -> Add message -> Send message
+// Page Up/Down: Navigate contacts (inbox pages)
 
 (function() {
   'use strict';
@@ -9,6 +10,12 @@
   const tabId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
   let clickState = 0; // 0: 👋 Hey, 1: Add message, 2: Send message (independent per tab)
+  
+  // Navigation state (for inbox pages)
+  let currentIndex = -1;
+  let contacts = [];
+  let sortedContacts = []; // Array of {element, translateY, originalIndex}
+  let savedPosition = null; // {sortedIndex, translateY} - saved position for navigation
 
   // Button selectors based on title/text
   const buttonConfigs = [
@@ -275,8 +282,219 @@
     }
   }
 
-  // Handle key press (Enter for Message, Space for automation)
+  // Navigation functions (for inbox pages)
+  function findContactNav() {
+    const navs = document.querySelectorAll('nav');
+    for (const nav of navs) {
+      const contacts = nav.querySelectorAll('[data-testid="contact"]');
+      if (contacts.length > 0) {
+        return nav;
+      }
+    }
+    return null;
+  }
+
+  function getContacts() {
+    const nav = findContactNav();
+    const searchRoot = nav || document;
+    
+    const allDivs = Array.from(searchRoot.querySelectorAll('div[style*="translateY"]'));
+    
+    const contacts = allDivs.filter(div => {
+      const hasContactTestId = div.getAttribute('data-testid') === 'contact';
+      const hasContactClass = div.classList.contains('contact');
+      const hasRoleButton = div.getAttribute('role') === 'button';
+      return hasContactTestId || (hasContactClass && hasRoleButton);
+    });
+    
+    if (contacts.length > 0) {
+      return contacts;
+    }
+    
+    return Array.from(searchRoot.querySelectorAll('[data-testid="contact"]'));
+  }
+
+  function getTranslateY(element) {
+    const style = element.getAttribute('style') || '';
+    const match = style.match(/translateY\(([^)]+)\)/);
+    if (match) {
+      const value = parseFloat(match[1]);
+      return isNaN(value) ? 0 : value;
+    }
+    return 0;
+  }
+
+  function getSortedContacts() {
+    contacts = getContacts();
+    if (contacts.length === 0) {
+      sortedContacts = [];
+      return [];
+    }
+
+    sortedContacts = contacts.map((contact, index) => ({
+      element: contact,
+      translateY: getTranslateY(contact),
+      originalIndex: index
+    }));
+
+    sortedContacts.sort((a, b) => a.translateY - b.translateY);
+    return sortedContacts;
+  }
+
+  function findCurrentContactIndex() {
+    if (sortedContacts.length === 0) {
+      getSortedContacts();
+    }
+    if (sortedContacts.length === 0) return -1;
+
+    if (currentIndex >= 0 && currentIndex < contacts.length) {
+      const currentElement = contacts[currentIndex];
+      const foundIndex = sortedContacts.findIndex(item => item.element === currentElement);
+      if (foundIndex >= 0) {
+        return foundIndex;
+      }
+    }
+
+    const viewportCenter = window.innerHeight / 2;
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    sortedContacts.forEach((item, index) => {
+      const rect = item.element.getBoundingClientRect();
+      const elementCenter = rect.top + rect.height / 2;
+      const distance = Math.abs(elementCenter - viewportCenter);
+      
+      if (rect.top >= 0 && rect.bottom <= window.innerHeight && distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    if (closestDistance === Infinity) {
+      for (let i = 0; i < sortedContacts.length; i++) {
+        const rect = sortedContacts[i].element.getBoundingClientRect();
+        if (rect.top > 0) {
+          return i;
+        }
+      }
+    }
+
+    return closestIndex;
+  }
+
+  function navigateToContact(sortedIndex) {
+    if (sortedContacts.length === 0) {
+      getSortedContacts();
+    }
+    if (sortedContacts.length === 0) return;
+
+    if (sortedIndex < 0) sortedIndex = 0;
+    if (sortedIndex >= sortedContacts.length) sortedIndex = sortedContacts.length - 1;
+
+    const contactItem = sortedContacts[sortedIndex];
+    if (!contactItem || !contactItem.element) return;
+
+    const contact = contactItem.element;
+
+    savedPosition = {
+      sortedIndex: sortedIndex,
+      translateY: contactItem.translateY
+    };
+
+    let clickableElement = contact;
+    
+    if (contact.getAttribute('role') === 'button') {
+      clickableElement = contact;
+    } else {
+      const parentButton = contact.closest('[role="button"]');
+      if (parentButton) {
+        clickableElement = parentButton;
+      }
+    }
+
+    contact.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    setTimeout(() => {
+      if (clickableElement) {
+        clickableElement.click();
+        currentIndex = contactItem.originalIndex;
+      } else {
+        contact.click();
+        currentIndex = contactItem.originalIndex;
+      }
+    }, 150);
+  }
+
+  // Check if current URL is a freelancer page
+  function isFreelancerPage() {
+    return /^https:\/\/pro\.fiverr\.com\/freelancers\//.test(location.href);
+  }
+
+  // Handle key press (Enter for Message, Space for automation, Page Up/Down for navigation)
   function handleKeyPress(event) {
+    // Handle Page Down/Up/Home for navigation FIRST (before other handlers)
+    if (event.key === 'PageDown' || event.key === 'Page Down') {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      getSortedContacts();
+      if (sortedContacts.length === 0) return;
+
+      let sortedIndex;
+      if (savedPosition && savedPosition.sortedIndex !== undefined) {
+        sortedIndex = savedPosition.sortedIndex;
+      } else {
+        sortedIndex = findCurrentContactIndex();
+      }
+      
+      const nextIndex = sortedIndex + 1;
+      if (nextIndex < sortedContacts.length) {
+        navigateToContact(nextIndex);
+      }
+      return;
+    } else if (event.key === 'PageUp' || event.key === 'Page Up') {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      getSortedContacts();
+      if (sortedContacts.length === 0) return;
+
+      let sortedIndex;
+      if (savedPosition && savedPosition.sortedIndex !== undefined) {
+        sortedIndex = savedPosition.sortedIndex;
+      } else {
+        sortedIndex = findCurrentContactIndex();
+      }
+      
+      const prevIndex = sortedIndex - 1;
+      if (prevIndex >= 0) {
+        navigateToContact(prevIndex);
+      }
+      return;
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      getSortedContacts();
+      if (sortedContacts.length === 0) return;
+
+      let targetIndex = 0;
+      
+      for (let i = 0; i < sortedContacts.length; i++) {
+        if (sortedContacts[i].translateY === 0) {
+          targetIndex = i;
+          break;
+        }
+        if (sortedContacts[i].translateY > 0) {
+          targetIndex = i > 0 ? i - 1 : 0;
+          break;
+        }
+      }
+      
+      navigateToContact(targetIndex);
+      return;
+    }
+    
     // Check for Enter key
     const isEnter = event.code === 'Enter' || 
                    event.key === 'Enter' ||
@@ -290,7 +508,17 @@
                    event.keyCode === 32 ||
                    event.which === 32;
     
-    // Handle Enter key - click Message button
+    // Only handle Enter and Space on freelancer pages
+    if (!isFreelancerPage()) {
+      // If not on freelancer page, only allow navigation keys
+      if (!isEnter && !isSpace) {
+        return; // Let other keys work normally
+      }
+      // Don't handle Enter/Space on non-freelancer pages
+      return;
+    }
+    
+    // Handle Enter key - click Message button (only on freelancer pages)
     if (isEnter) {
       // Don't trigger if user is submitting a form or in a textarea (let normal behavior work)
       const target = event.target;
@@ -366,14 +594,66 @@
   
   // Reset state when page changes (for SPA navigation) - but keep tab ID
   let lastUrl = location.href;
-  new MutationObserver(() => {
+  const urlObserver = new MutationObserver(() => {
     const url = location.href;
     if (url !== lastUrl) {
       lastUrl = url;
       clickState = 0; // Reset to first automated button (👋 Hey) for this tab
       console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Page changed, reset state to 0`);
     }
-  }).observe(document, { subtree: true, childList: true });
+  });
+  urlObserver.observe(document, { subtree: true, childList: true });
+
+  // Observer for contact list changes (inbox pages)
+  const contactObserver = new MutationObserver(() => {
+    let translateYChanged = false;
+    
+    const newContacts = getContacts();
+    if (newContacts.length !== contacts.length) {
+      currentIndex = -1;
+      contacts = newContacts;
+      sortedContacts = [];
+      translateYChanged = true;
+    } else {
+      if (sortedContacts.length > 0 && savedPosition) {
+        getSortedContacts();
+        if (savedPosition.sortedIndex < sortedContacts.length) {
+          const currentTranslateY = sortedContacts[savedPosition.sortedIndex].translateY;
+          if (currentTranslateY !== savedPosition.translateY) {
+            translateYChanged = true;
+            savedPosition.translateY = currentTranslateY;
+          }
+        }
+      }
+    }
+    
+    if (translateYChanged) {
+      clickState = 0;
+    }
+  });
+
+  // Setup contact observer when DOM is ready
+  function setupContactObserver() {
+    const nav = findContactNav();
+    const contactContainer = nav || document.body;
+
+    if (contactContainer) {
+      contactObserver.observe(contactContainer, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style']
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupContactObserver);
+  } else {
+    setupContactObserver();
+  }
+
+  console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Navigation enabled for inbox pages`);
 
 })();
 

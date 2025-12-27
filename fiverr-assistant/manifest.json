@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Fiverr Assistant",
   "version": "1.0.0",
-  "description": "Automates button clicks on Fiverr freelancer pages with space key",
+  "description": "Navigate Fiverr inbox contacts and automate message sending on freelancer pages with keyboard shortcuts",
   "icons": {
     "16": "assets/icons/icon-16.png",
     "32": "assets/icons/icon-32.png",
@@ -24,7 +24,12 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://pro.fiverr.com/freelancers/*"],
+      "matches": [
+        "https://pro.fiverr.com/freelancers/*",
+        "https://pro.fiverr.com/inbox",
+        "https://pro.fiverr.com/inbox/",
+        "https://pro.fiverr.com/inbox/*"
+      ],
       "js": ["content/content.js"],
       "run_at": "document_idle"
     }

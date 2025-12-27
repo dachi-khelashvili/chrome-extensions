@@ -226,40 +226,9 @@
 
       <div class="content">
         <section>
-          <h2>How to Use</h2>
-          <div class="instructions">
-            <ol>
-              <li>Navigate to a Fiverr freelancer page at <code>pro.fiverr.com/freelancers/*</code></li>
-              <li>Press <span class="key">Enter</span> to click the <span class="highlight">Message</span> button</li>
-              <li>Press <span class="key">Space</span> to automatically click buttons in sequence:
-                <ul>
-                  <li>First press: Clicks <span class="highlight">👋 Hey</span> button</li>
-                  <li>Second press: Adds random message to textarea</li>
-                  <li>Third press: Clicks <span class="highlight">Send message</span> button</li>
-                </ul>
-              </li>
-              <li>The sequence resets after clicking the Message button</li>
-            </ol>
-          </div>
-        </section>
-
-        <section>
-          <h2>Keyboard Shortcuts</h2>
-          <div class="instructions">
-            <p><strong><span class="key">Enter</span></strong> - Click Message button</p>
-            <p><strong><span class="key">Space</span></strong> - Continue automation sequence:</p>
-            <ul>
-              <li>1st press: Click 👋 Hey button</li>
-              <li>2nd press: Add random message to textarea</li>
-              <li>3rd press: Click Send message button</li>
-            </ul>
-          </div>
-        </section>
-
-        <section>
           <h2>Messages</h2>
           <div class="hint">
-            Enter messages separated by <code> | </code> (pipe with spaces)
+            Enter messages separated by " | " (pipe with spaces)
           </div>
           <textarea id="messages" placeholder="e.g. Hello! | Hi there! | Greetings!"></textarea>
           <div class="actions">
@@ -269,8 +238,44 @@
         </section>
 
         <section>
+          <h2>Navigation Shortcuts (Inbox)</h2>
+          <div class="instructions">
+            <p>Navigate through your contact list on the left sidebar:</p>
+            <ul>
+              <li><strong><span class="key">Page Down</span></strong> - Navigate to next contact</li>
+              <li><strong><span class="key">Page Up</span></strong> - Navigate to previous contact</li>
+              <li><strong><span class="key">Home</span></strong> - Jump to first contact</li>
+            </ul>
+            <p style="margin-top: 8px; font-size: 12px; color: #5c6b82;">
+              Works on <code>pro.fiverr.com/inbox</code> and all inbox pages.
+            </p>
+          </div>
+        </section>
+
+        <section>
           <div class="note">
-            <strong>Note:</strong> The extension only works on Fiverr Pro freelancer pages. Make sure you're on the correct page before using the shortcuts.
+            <strong>Note:</strong>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+              <li>Navigation works on <code>pro.fiverr.com/inbox</code> and all inbox sub-pages</li>
+              <li>Message shortcuts work on freelancer pages and in inbox conversations</li>
+              <li>Navigation won't interfere with typing in input fields</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h2>Message Shortcuts (Freelancer Pages)</h2>
+          <div class="instructions">
+            <p>On freelancer pages (<code>pro.fiverr.com/freelancers/*</code>):</p>
+            <ul>
+              <li><strong><span class="key">Enter</span></strong> - Click Message button</li>
+              <li><strong><span class="key">Space</span></strong> - Send message sequence:</li>
+              <ul style="margin-top: 4px;">
+                <li>1st press: Click <span class="highlight">👋 Hey</span> button</li>
+                <li>2nd press: Add random message to textarea</li>
+                <li>3rd press: Click <span class="highlight">Send message</span> button</li>
+              </ul>
+            </ul>
           </div>
         </section>
       </div>
