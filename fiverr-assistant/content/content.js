@@ -1,6 +1,6 @@
 // Fiverr Assistant - Keyboard button clicker
 // Enter key: Clicks Message button
-// Space key: Clicks 👋 Hey -> Send message
+// Space key: Clicks 👋 Hey -> Add message -> Send message
 
 (function() {
   'use strict';
@@ -8,7 +8,7 @@
   // Generate unique identifier for this tab instance
   const tabId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
   
-  let clickState = 0; // 0: 👋 Hey, 1: Send message (independent per tab)
+  let clickState = 0; // 0: 👋 Hey, 1: Add message, 2: Send message (independent per tab)
 
   // Button selectors based on title/text
   const buttonConfigs = [
@@ -23,6 +23,65 @@
       textMatch: /Send\s+message/i
     }
   ];
+
+  // Get random message from storage
+  function getRandomMessage(callback) {
+    chrome.storage.local.get(['messages'], (data) => {
+      const messagesText = data.messages || '';
+      if (!messagesText.trim()) {
+        console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: No messages found in storage`);
+        callback(null);
+        return;
+      }
+      
+      const messages = messagesText.split('|').map(msg => msg.trim()).filter(msg => msg.length > 0);
+      if (messages.length === 0) {
+        console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: No valid messages found`);
+        callback(null);
+        return;
+      }
+      
+      const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+      callback(randomMessage);
+    });
+  }
+
+  // Add message to textarea (append, not replace)
+  function setMessageInTextarea(message) {
+    const textarea = document.querySelector('textarea[data-testid="message-box"]');
+    if (!textarea) {
+      console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Could not find message textarea`);
+      return false;
+    }
+    
+    // Get current value
+    const currentValue = textarea.value || '';
+    
+    // Append message with a space if there's existing content
+    const newValue = currentValue.trim() 
+      ? currentValue + message 
+      : message;
+    
+    // Set the value
+    textarea.value = newValue;
+    
+    // Set cursor position to end
+    textarea.setSelectionRange(newValue.length, newValue.length);
+    
+    // Trigger input event to ensure React/other frameworks detect the change
+    const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+    textarea.dispatchEvent(inputEvent);
+    
+    // Also trigger change event
+    const changeEvent = new Event('change', { bubbles: true, cancelable: true });
+    textarea.dispatchEvent(changeEvent);
+    
+    // Focus the textarea
+    textarea.focus();
+    
+    console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Added message to textarea: "${message}"`);
+    return true;
+  }
 
   // Find button by title or text content
   function findButton(config) {
@@ -144,38 +203,75 @@
     }
   }
 
-  // Click button and update state
-  function clickNextButton() {
-    const config = buttonConfigs[clickState];
-    const button = findButton(config);
+  // Handle space key actions based on state
+  function handleSpaceAction() {
+    if (clickState === 0) {
+      // State 0: Click 👋 Hey button
+      const config = buttonConfigs[0];
+      const button = findButton(config);
 
-    if (button) {
-      // Scroll button into view
-      button.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      // Wait a bit for scroll, then click
-      setTimeout(() => {
-        // Try multiple click methods
-        if (button.click) {
-          button.click();
-        } else if (button.dispatchEvent) {
-          const clickEvent = new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            view: window
-          });
-          button.dispatchEvent(clickEvent);
+      if (button) {
+        button.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          if (button.click) {
+            button.click();
+          } else if (button.dispatchEvent) {
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window
+            });
+            button.dispatchEvent(clickEvent);
+          }
+          console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Clicked "${config.title}" button (state: 0 -> 1)`);
+          clickState = 1;
+        }, 100);
+      } else {
+        console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Could not find "${config.title}" button`);
+        clickState = 1; // Still advance state
+      }
+    } else if (clickState === 1) {
+      // State 1: Add random message to textarea
+      getRandomMessage((message) => {
+        if (message) {
+          const success = setMessageInTextarea(message);
+          if (success) {
+            console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Added message to textarea (state: 1 -> 2)`);
+            clickState = 2;
+          } else {
+            // If textarea not found, try to advance anyway
+            clickState = 2;
+          }
+        } else {
+          console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: No messages available, skipping to send (state: 1 -> 2)`);
+          clickState = 2;
         }
-        
-        console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Clicked "${config.title}" button (state: ${clickState} -> ${(clickState + 1) % buttonConfigs.length})`);
-        
-        // Move to next state
-        clickState = (clickState + 1) % buttonConfigs.length;
-      }, 100);
-    } else {
-      console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Could not find "${config.title}" button`);
-      // Still advance state to allow retry
-      clickState = (clickState + 1) % buttonConfigs.length;
+      });
+    } else if (clickState === 2) {
+      // State 2: Click Send message button
+      const config = buttonConfigs[1];
+      const button = findButton(config);
+
+      if (button) {
+        button.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          if (button.click) {
+            button.click();
+          } else if (button.dispatchEvent) {
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window
+            });
+            button.dispatchEvent(clickEvent);
+          }
+          console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Clicked "${config.title}" button (state: 2 -> 0)`);
+          clickState = 0; // Reset to beginning
+        }, 100);
+      } else {
+        console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Could not find "${config.title}" button`);
+        clickState = 0; // Reset to beginning
+      }
     }
   }
 
@@ -243,7 +339,7 @@
       // Small delay to ensure blur happens, then proceed
       setTimeout(() => {
         console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Space key pressed (input focused), state: ${clickState}`);
-        clickNextButton();
+        handleSpaceAction();
       }, 50);
       return false;
     }
@@ -254,7 +350,7 @@
     event.stopImmediatePropagation();
     
     console.log(`Fiverr Assistant [Tab ${tabId.substring(0, 8)}]: Space key pressed, state: ${clickState}`);
-    clickNextButton();
+    handleSpaceAction();
     
     return false;
   }
