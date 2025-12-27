@@ -725,22 +725,15 @@ function automatePage(messages, timeAfterContact, timeAfterHey, timeBeforeSend, 
       return null;
     }
 
-    // Optimized message input handler
+    // Message input handler - preserves all newlines exactly as entered
     function fillMessageBox(messageBox, message) {
-      // Normalize message to single line
-      const normalizedMessage = message
-                  .replace(/\r\n/g, ' ')
-                  .replace(/\r/g, ' ')
-                  .replace(/\n/g, ' ')
-        .replace(/\s+/g, ' ')
-                  .trim();
+      // Keep message exactly as entered, preserving all newlines (no trimming)
+      const messageToAdd = message;
 
                 messageBox.focus();
                 
                 const existingText = messageBox.value || '';
-                const separator = existingText.trim() ? ' ' : '';
-      messageBox.value = existingText + separator + normalizedMessage;
-                messageBox.value = messageBox.value.replace(/\s+/g, ' ').trim();
+      messageBox.value = existingText + messageToAdd;
                 
       // Trigger events for React/other frameworks
                 const inputEvent = new Event('input', { bubbles: true, cancelable: true });

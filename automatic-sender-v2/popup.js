@@ -62,7 +62,7 @@ async function loadSavedData() {
     
     // Update UI
     if (cachedState.messages) {
-      elements.messagesTextarea.value = cachedState.messages.join('\n');
+      elements.messagesTextarea.value = cachedState.messages.join(' | ');
     }
     if (cachedState.urls) {
       elements.urlsTextarea.value = cachedState.urls.join('\n');
@@ -83,9 +83,8 @@ function setupEventListeners() {
   // Save messages
   elements.saveMessagesBtn.addEventListener('click', async () => {
     const messages = elements.messagesTextarea.value
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+      .split(' | ')
+      .filter(msg => msg.length > 0); // Keep messages exactly as entered, no trimming
     
     try {
       await browserAPI.storage.local.set({ messages });
@@ -170,9 +169,8 @@ function setupEventListeners() {
     }
 
     const messages = elements.messagesTextarea.value
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
+      .split(' | ')
+      .filter(msg => msg.length > 0); // Keep messages exactly as entered, no trimming
     const urls = elements.urlsTextarea.value
       .split('\n')
       .map(line => line.trim())
