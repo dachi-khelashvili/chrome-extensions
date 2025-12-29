@@ -1,27 +1,53 @@
 // Vladivostok timezone: Asia/Vladivostok (UTC+10)
 const VLADIVOSTOK_TIMEZONE = 'Asia/Vladivostok';
 
-// Get current date in Vladivostok timezone
+// Get current date/time in Vladivostok timezone
 function getVladivostokDate() {
-  const now = new Date();
-  return new Date(now.toLocaleString('en-US', { timeZone: VLADIVOSTOK_TIMEZONE }));
+  return new Date();
 }
 
-// Get the tracking day (7pm to 7pm next day)
-function getTrackingDay(date = null) {
-  const vladDate = date || getVladivostokDate();
-  const year = vladDate.getFullYear();
-  const month = vladDate.getMonth();
-  const day = vladDate.getDate();
-  const hour = vladDate.getHours();
+// Get date components in Vladivostok timezone
+function getVladivostokDateComponents(date) {
+  const vladStr = date.toLocaleString('en-US', { 
+    timeZone: VLADIVOSTOK_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
   
-  // If before 7pm (19:00), it's still the previous day's tracking period
-  if (hour < 19) {
-    const prevDay = new Date(year, month, day - 1);
-    return formatDateKey(prevDay);
+  // Format: "MM/DD/YYYY, HH:MM:SS"
+  const [datePart, timePart] = vladStr.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hour, minute, second] = timePart.split(':');
+  
+  return {
+    year: parseInt(year),
+    month: parseInt(month) - 1, // JavaScript months are 0-indexed
+    day: parseInt(day),
+    hour: parseInt(hour),
+    minute: parseInt(minute),
+    second: parseInt(second)
+  };
+}
+
+// Get the tracking day (7pm to 7pm next day) in Vladivostok timezone
+function getTrackingDay(date = null) {
+  const targetDate = date || getVladivostokDate();
+  const components = getVladivostokDateComponents(targetDate);
+  
+  // If before 7pm (19:00) in Vladivostok, it's still the previous day's tracking period
+  if (components.hour < 19) {
+    // Get the previous day's date string in Vladivostok timezone
+    const prevDate = new Date(targetDate);
+    prevDate.setTime(prevDate.getTime() - 24 * 60 * 60 * 1000); // Subtract 24 hours
+    return formatDateKey(prevDate);
   }
   
-  return formatDateKey(vladDate);
+  return formatDateKey(targetDate);
 }
 
 // Format date as YYYY-MM-DD for storage key (in Vladivostok timezone)
@@ -89,6 +115,14 @@ async function addEntry(dayKey, entry) {
   return entries;
 }
 
+// Delete an entry by index
+async function deleteEntry(dayKey, index) {
+  const entries = await getEntriesForDay(dayKey);
+  entries.splice(index, 1);
+  await saveEntriesForDay(dayKey, entries);
+  return entries;
+}
+
 // Render the list of entries
 async function renderList(dayKey) {
   const entries = await getEntriesForDay(dayKey);
@@ -99,19 +133,36 @@ async function renderList(dayKey) {
     return;
   }
   
-  listElement.innerHTML = entries.map(entry => {
+  listElement.innerHTML = entries.map((entry, index) => {
+    // Parse ISO strings and format in Vladivostok timezone
     const startTime = new Date(entry.start);
     const endTime = new Date(entry.end);
     const duration = endTime - startTime;
     
     return `
       <li>
-        <div class="task-name">${entry.description}</div>
-        <div class="task-time">${formatTime(startTime)} - ${formatTime(endTime)}</div>
-        <div class="task-duration">Duration: ${formatDuration(duration)}</div>
+        <div class="entry-content">
+          <div class="task-name">${entry.description}</div>
+          <div class="task-time">${formatTime(startTime)} - ${formatTime(endTime)}</div>
+          <div class="task-duration">Duration: ${formatDuration(duration)}</div>
+        </div>
+        <button class="delete-btn" data-day-key="${dayKey}" data-index="${index}" title="Delete entry">×</button>
       </li>
     `;
   }).join('');
+  
+  // Add event listeners to delete buttons
+  listElement.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const dayKey = btn.getAttribute('data-day-key');
+      const index = parseInt(btn.getAttribute('data-index'));
+      
+      if (confirm('Are you sure you want to delete this entry?')) {
+        await deleteEntry(dayKey, index);
+        await renderList(dayKey);
+      }
+    });
+  });
 }
 
 // Initialize the popup
@@ -120,33 +171,64 @@ let isTracking = false;
 let startTime = null;
 let currentDayKey = null;
 
+// Restore active session if it exists for the given day key
+async function restoreActiveSession(dayKey) {
+  // First, clear any existing UI state
+  isTracking = false;
+  startTime = null;
+  const input = document.getElementById('taskInput');
+  const button = document.getElementById('trackButton');
+  input.disabled = false;
+  input.value = '';
+  button.textContent = 'Start';
+  button.classList.remove('end');
+  
+  // Then check if there's an active session for this day
+  const activeSession = await chrome.storage.local.get(['activeSession']);
+  if (activeSession.activeSession) {
+    const session = activeSession.activeSession;
+    // Parse the stored ISO string and determine tracking day in Vladivostok timezone
+    const sessionStartDate = new Date(session.start);
+    const sessionDayKey = getTrackingDay(sessionStartDate);
+    
+    // If session is for the current viewing day, restore it
+    if (sessionDayKey === dayKey) {
+      isTracking = true;
+      startTime = sessionStartDate;
+      input.value = session.description;
+      input.disabled = true;
+      button.textContent = 'End';
+      button.classList.add('end');
+      return true;
+    }
+  }
+  return false;
+}
+
 async function init() {
-  // Set date picker to today's calendar date
+  // Set date picker to today's calendar date in Vladivostok
   const today = getVladivostokDate();
   const todayKey = formatDateForPicker(today);
   document.getElementById('datePicker').value = todayKey;
   
-  // Show entries for today's tracking period (from today 7pm to tomorrow 7pm)
-  // The date picker value (YYYY-MM-DD) is used directly as the tracking day key
-  currentDayKey = todayKey;
+  // Get the actual tracking day key (which might be yesterday if before 7pm)
+  const trackingDayKey = getTrackingDay(today);
+  currentDayKey = trackingDayKey;
+  
+  // Update date picker to show the tracking day's date if different
+  // This helps user understand which day they're viewing
+  const trackingDayDate = new Date(today);
+  const components = getVladivostokDateComponents(today);
+  if (components.hour < 19) {
+    // Before 7pm, tracking day is previous day, so show previous day in picker
+    trackingDayDate.setTime(trackingDayDate.getTime() - 24 * 60 * 60 * 1000);
+    document.getElementById('datePicker').value = formatDateForPicker(trackingDayDate);
+  }
+  
   await renderList(currentDayKey);
   
-  // Check if there's an active tracking session
-  const activeSession = await chrome.storage.local.get(['activeSession']);
-  if (activeSession.activeSession) {
-    const session = activeSession.activeSession;
-    const sessionDayKey = getTrackingDay(new Date(session.start));
-    
-    // If session is for the current viewing day, restore it
-    if (sessionDayKey === currentDayKey) {
-      isTracking = true;
-      startTime = new Date(session.start);
-      document.getElementById('taskInput').value = session.description;
-      document.getElementById('taskInput').disabled = true;
-      document.getElementById('trackButton').textContent = 'End';
-      document.getElementById('trackButton').classList.add('end');
-    }
-  }
+  // Check if there's an active tracking session and restore it
+  await restoreActiveSession(currentDayKey);
   
   // Date picker change handler
   document.getElementById('datePicker').addEventListener('change', async (e) => {
@@ -156,6 +238,9 @@ async function init() {
     // So we can use the date string directly as the tracking day key
     currentDayKey = e.target.value;
     await renderList(currentDayKey);
+    
+    // Check if there's an active session for this day
+    await restoreActiveSession(currentDayKey);
   });
   
   // Button click handler
