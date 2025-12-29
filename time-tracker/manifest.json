@@ -3,6 +3,12 @@
   "name": "Time Tracker",
   "version": "1.0.0",
   "description": "Track time day by day in Vladivostok timezone (7pm to 7pm)",
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
   "action": {
     "default_popup": "popup.html"
   },
