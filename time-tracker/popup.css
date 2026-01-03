@@ -129,6 +129,7 @@ body {
 
 #timeList {
   list-style: none;
+  max-height: calc(100vh - 312px);
   overflow-y: auto;
 }
 
