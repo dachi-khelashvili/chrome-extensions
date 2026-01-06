@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Email Sender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Auto Email Sender</h1>
+    
+    <div class="section">
+      <h2>Waiting Time Settings</h2>
+      <div class="form-group">
+        <label for="minWait">Min Waiting Time (seconds):</label>
+        <input type="number" id="minWait" min="1" value="5" />
+      </div>
+      <div class="form-group">
+        <label for="maxWait">Max Waiting Time (seconds):</label>
+        <input type="number" id="maxWait" min="1" value="10" />
+      </div>
+      <div class="form-group">
+        <label for="waitAfterOpen">Wait After Open Tab (seconds):</label>
+        <input type="number" id="waitAfterOpen" min="1" value="3" />
+      </div>
+      <div class="form-group">
+        <label for="waitAfterSend">Wait After Send (seconds):</label>
+        <input type="number" id="waitAfterSend" min="1" value="2" />
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Emails</h2>
+      <label for="emails">One email per line:</label>
+      <textarea id="emails" rows="5" placeholder="email1@example.com&#10;email2@example.com&#10;email3@example.com"></textarea>
+      <div class="email-count" id="emailCount">Total: 0 emails</div>
+    </div>
+
+    <div class="section">
+      <h2>Subjects</h2>
+      <label for="subjects">Subjects separated by " | ":</label>
+      <textarea id="subjects" rows="3" placeholder="Subject 1 | Subject 2 | Subject 3"></textarea>
+    </div>
+
+    <div class="section">
+      <h2>Messages</h2>
+      <label for="messages">Messages separated by " | " (use \n for newlines):</label>
+      <textarea id="messages" rows="5" placeholder="Message 1\nLine 2 | Message 2\nLine 2 | Message 3"></textarea>
+    </div>
+
+    <div class="section">
+      <button id="startBtn" class="btn btn-primary">Start Automation</button>
+      <button id="stopBtn" class="btn btn-danger" disabled>Stop Automation</button>
+    </div>
+
+    <div class="section">
+      <h2>Process Timeline</h2>
+      <div id="timeline" class="timeline">
+        <div class="timeline-step" data-step="open-tab">
+          <div class="step-icon">📂</div>
+          <div class="step-content">
+            <div class="step-title">Open Tab</div>
+            <div class="step-status" id="step-open-tab">Waiting...</div>
+          </div>
+        </div>
+        <div class="timeline-step" data-step="add-subject">
+          <div class="step-icon">📝</div>
+          <div class="step-content">
+            <div class="step-title">Add Subject</div>
+            <div class="step-status" id="step-add-subject">Waiting...</div>
+          </div>
+        </div>
+        <div class="timeline-step" data-step="add-description">
+          <div class="step-icon">✉️</div>
+          <div class="step-content">
+            <div class="step-title">Add Description</div>
+            <div class="step-status" id="step-add-description">Waiting...</div>
+          </div>
+        </div>
+        <div class="timeline-step" data-step="waiting">
+          <div class="step-icon">⏳</div>
+          <div class="step-content">
+            <div class="step-title">Waiting for Next Email</div>
+            <div class="step-status" id="step-waiting">Waiting...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="section">
+      <h2>History</h2>
+      <div id="history" class="history-container">
+        <div id="historyList" class="history-list"></div>
+        <button id="clearHistoryBtn" class="btn btn-danger" style="margin-top: 10px;">Clear History</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
