@@ -1,271 +1,196 @@
-// Update email count
-function updateEmailCount() {
-  const emailsTextarea = document.getElementById('emails');
-  const emailCountEl = document.getElementById('emailCount');
-  const emails = emailsTextarea.value.split('\n').filter(e => e.trim()).length;
-  emailCountEl.textContent = `Total: ${emails} email${emails !== 1 ? 's' : ''}`;
-}
+// DOM elements
+const minWaitTimeInput = document.getElementById('minWaitTime');
+const maxWaitTimeInput = document.getElementById('maxWaitTime');
+const waitAfterOpenInput = document.getElementById('waitAfterOpen');
+const waitAfterSendInput = document.getElementById('waitAfterSend');
+const emailsInput = document.getElementById('emails');
+const subjectsInput = document.getElementById('subjects');
+const messagesInput = document.getElementById('messages');
+const emailCount = document.querySelector('.email-count');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const historyList = document.getElementById('historyList');
+const timelineSteps = {
+  step1: { element: document.getElementById('step1'), status: document.getElementById('status1') },
+  step2: { element: document.getElementById('step2'), status: document.getElementById('status2') },
+  step3: { element: document.getElementById('step3'), status: document.getElementById('status3') }
+};
 
 // Load saved settings
-document.addEventListener('DOMContentLoaded', () => {
-  chrome.storage.local.get([
-    'minWait', 'maxWait', 'waitAfterOpen', 'waitAfterSend',
-    'emails', 'subjects', 'messages'
-  ], (result) => {
-    if (result.minWait) document.getElementById('minWait').value = result.minWait;
-    if (result.maxWait) document.getElementById('maxWait').value = result.maxWait;
-    if (result.waitAfterOpen) document.getElementById('waitAfterOpen').value = result.waitAfterOpen;
-    if (result.waitAfterSend) document.getElementById('waitAfterSend').value = result.waitAfterSend;
-    if (result.emails) document.getElementById('emails').value = result.emails;
-    if (result.subjects) document.getElementById('subjects').value = result.subjects;
-    if (result.messages) document.getElementById('messages').value = result.messages;
-    updateEmailCount();
-  });
+async function loadSettings() {
+  const result = await chrome.storage.local.get([
+    'minWaitTime', 'maxWaitTime', 'waitAfterOpen', 'waitAfterSend',
+    'emails', 'subjects', 'messages', 'history', 'isRunning'
+  ]);
 
-  // Load history
-  loadHistory();
-
-  // Clear history button
-  document.getElementById('clearHistoryBtn').addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear all history?')) {
-      chrome.storage.local.set({ emailHistory: [] });
-      loadHistory();
-    }
-  });
+  if (result.minWaitTime !== undefined) minWaitTimeInput.value = result.minWaitTime;
+  if (result.maxWaitTime !== undefined) maxWaitTimeInput.value = result.maxWaitTime;
+  if (result.waitAfterOpen !== undefined) waitAfterOpenInput.value = result.waitAfterOpen;
+  if (result.waitAfterSend !== undefined) waitAfterSendInput.value = result.waitAfterSend;
+  if (result.emails !== undefined) emailsInput.value = result.emails.join('\n');
+  if (result.subjects !== undefined) subjectsInput.value = result.subjects.join(' | ');
+  if (result.messages !== undefined) messagesInput.value = result.messages.join(' | ');
+  
+  updateEmailCount();
+  loadHistory(result.history || []);
 
   // Check if automation is running
-  chrome.storage.local.get(['isRunning'], (result) => {
-    if (result.isRunning) {
-      document.getElementById('startBtn').disabled = true;
-      document.getElementById('stopBtn').disabled = false;
-      updateStatus('Automation is running...');
-    }
-  });
-});
+  if (result.isRunning) {
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    clearTimeline();
+  }
+}
 
-// Save settings on input change
-['minWait', 'maxWait', 'waitAfterOpen', 'waitAfterSend', 'subjects', 'messages'].forEach(id => {
-  document.getElementById(id).addEventListener('input', (e) => {
-    chrome.storage.local.set({ [id]: e.target.value });
-  });
-});
+// Save settings
+async function saveSettings() {
+  const emails = emailsInput.value.split('\n').filter(e => e.trim());
+  const subjects = subjectsInput.value.split(' | ').map(s => s.trim()).filter(s => s);
+  const messages = messagesInput.value.split(' | ').map(m => m.trim()).filter(m => m);
 
-// Special handling for emails to update count
-document.getElementById('emails').addEventListener('input', (e) => {
-  chrome.storage.local.set({ emails: e.target.value });
+  await chrome.storage.local.set({
+    minWaitTime: parseInt(minWaitTimeInput.value) || 5,
+    maxWaitTime: parseInt(maxWaitTimeInput.value) || 10,
+    waitAfterOpen: parseInt(waitAfterOpenInput.value) || 3,
+    waitAfterSend: parseInt(waitAfterSendInput.value) || 2,
+    emails: emails,
+    subjects: subjects,
+    messages: messages
+  });
+
   updateEmailCount();
-});
+}
 
-// Start button
-document.getElementById('startBtn').addEventListener('click', () => {
-  const minWait = parseInt(document.getElementById('minWait').value);
-  const maxWait = parseInt(document.getElementById('maxWait').value);
-  const waitAfterOpen = parseInt(document.getElementById('waitAfterOpen').value);
-  const waitAfterSend = parseInt(document.getElementById('waitAfterSend').value);
-  const emails = document.getElementById('emails').value.trim();
-  const subjects = document.getElementById('subjects').value.trim();
-  const messages = document.getElementById('messages').value.trim();
+// Update email count
+function updateEmailCount() {
+  const emails = emailsInput.value.split('\n').filter(e => e.trim());
+  emailCount.textContent = `${emails.length} emails`;
+}
 
-  // Validation
-  if (!emails) {
-    updateStatus('Error: Please enter at least one email', 'error');
-    return;
-  }
-  if (!subjects) {
-    updateStatus('Error: Please enter at least one subject', 'error');
-    return;
-  }
-  if (!messages) {
-    updateStatus('Error: Please enter at least one message', 'error');
-    return;
-  }
-  if (minWait < 1 || maxWait < 1 || minWait > maxWait) {
-    updateStatus('Error: Invalid waiting time settings', 'error');
+// Load history
+function loadHistory(history) {
+  if (!history || history.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">No emails sent yet</div>';
     return;
   }
 
-  // Save settings
-  chrome.storage.local.set({
-    minWait,
-    maxWait,
-    waitAfterOpen,
-    waitAfterSend,
-    emails,
-    subjects,
-    messages,
-    isRunning: true
-  });
-
-  // Start automation
-  document.getElementById('startBtn').disabled = true;
-  document.getElementById('stopBtn').disabled = false;
-  updateStatus('Starting automation...', 'info');
-  resetTimeline();
-
-  chrome.runtime.sendMessage({ action: 'startAutomation' });
-});
-
-// Stop button
-document.getElementById('stopBtn').addEventListener('click', () => {
-  chrome.storage.local.set({ isRunning: false });
-  chrome.runtime.sendMessage({ action: 'stopAutomation' });
-  document.getElementById('startBtn').disabled = false;
-  document.getElementById('stopBtn').disabled = true;
-  updateStatus('Automation stopped', 'info');
-});
-
-let countdownInterval = null;
-
-// Listen for status updates
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'updateStatus') {
-    updateStatus(message.text, message.type);
-  }
-  if (message.action === 'updateTimeline') {
-    updateTimeline(message.step, message.status, message.countdown);
-  }
-  if (message.action === 'resetTimeline') {
-    resetTimeline();
-  }
-  if (message.action === 'addHistoryItem') {
-    addHistoryItem(message.email, message.subject, message.time);
-  }
-  if (message.action === 'updateEmailList') {
-    // Update the email textarea to reflect remaining emails
-    const emailsTextarea = document.getElementById('emails');
-    emailsTextarea.value = message.remainingEmails || '';
-    updateEmailCount();
-    updateStatus(`Email sent! ${message.remaining} remaining, ${message.total} processed.`, 'info');
-  }
-  if (message.action === 'automationComplete') {
-    document.getElementById('startBtn').disabled = false;
-    document.getElementById('stopBtn').disabled = true;
-    chrome.storage.local.set({ isRunning: false });
-    resetTimeline();
-  }
-});
-
-function updateStatus(text, type = 'info') {
-  const statusEl = document.getElementById('status');
-  statusEl.textContent = text;
-  statusEl.className = `status ${type}`;
+  historyList.innerHTML = history.map(item => `
+    <div class="history-item">
+      <div class="history-email">${escapeHtml(item.email)}</div>
+      <div class="history-subject">${escapeHtml(item.subject || 'No subject')}</div>
+      <div class="history-time">${escapeHtml(item.datetime)}</div>
+    </div>
+  `).join('');
 }
 
-function updateTimeline(step, status, countdown = null) {
-  // Reset all steps
-  document.querySelectorAll('.timeline-step').forEach(el => {
-    el.classList.remove('active', 'completed');
-  });
-
-  // Update the current step
-  const stepEl = document.querySelector(`[data-step="${step}"]`);
-  if (stepEl) {
-    stepEl.classList.add('active');
-    const statusEl = stepEl.querySelector('.step-status');
-    if (countdown !== null) {
-      statusEl.textContent = `${status} (${countdown}s)`;
-    } else {
-      statusEl.textContent = status;
-    }
-  }
-
-  // Mark previous steps as completed
-  const steps = ['open-tab', 'add-subject', 'add-description', 'waiting'];
-  const currentIndex = steps.indexOf(step);
-  for (let i = 0; i < currentIndex; i++) {
-    const prevStepEl = document.querySelector(`[data-step="${steps[i]}"]`);
-    if (prevStepEl) {
-      prevStepEl.classList.add('completed');
-      prevStepEl.classList.remove('active');
-    }
-  }
-
-  // Handle countdown
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-
-  if (countdown !== null && countdown > 0) {
-    let remaining = countdown;
-    countdownInterval = setInterval(() => {
-      remaining--;
-      if (remaining >= 0 && stepEl) {
-        const statusEl = stepEl.querySelector('.step-status');
-        statusEl.textContent = `${status} (${remaining}s)`;
-      }
-      if (remaining <= 0) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-      }
-    }, 1000);
-  }
-}
-
-function resetTimeline() {
-  document.querySelectorAll('.timeline-step').forEach(el => {
-    el.classList.remove('active', 'completed');
-    const statusEl = el.querySelector('.step-status');
-    statusEl.textContent = 'Waiting...';
-  });
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-    countdownInterval = null;
-  }
-}
-
-// Reset timeline when stopping
-document.getElementById('stopBtn').addEventListener('click', () => {
-  resetTimeline();
-});
-
-// History functions
-function loadHistory() {
-  chrome.storage.local.get(['emailHistory'], (result) => {
-    const history = result.emailHistory || [];
-    const historyList = document.getElementById('historyList');
-    
-    if (history.length === 0) {
-      historyList.innerHTML = '<div class="history-empty">No history yet</div>';
-      return;
-    }
-    
-    historyList.innerHTML = history.map(item => `
-      <div class="history-item">
-        <div class="history-email">${escapeHtml(item.email)}</div>
-        <div class="history-subject">${escapeHtml(item.subject)}</div>
-        <div class="history-time">${escapeHtml(item.time)}</div>
-      </div>
-    `).join('');
-  });
-}
-
-function addHistoryItem(email, subject, time) {
-  const historyList = document.getElementById('historyList');
-  const emptyMsg = historyList.querySelector('.history-empty');
-  if (emptyMsg) {
-    emptyMsg.remove();
-  }
-  
-  const item = document.createElement('div');
-  item.className = 'history-item';
-  item.innerHTML = `
-    <div class="history-email">${escapeHtml(email)}</div>
-    <div class="history-subject">${escapeHtml(subject)}</div>
-    <div class="history-time">${escapeHtml(time)}</div>
-  `;
-  
-  historyList.insertBefore(item, historyList.firstChild);
-  
-  // Keep only last 100 items in DOM
-  while (historyList.children.length > 100) {
-    historyList.removeChild(historyList.lastChild);
-  }
-}
-
+// Escape HTML
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
 
+// Clear timeline highlights
+function clearTimeline() {
+  Object.values(timelineSteps).forEach(step => {
+    step.element.classList.remove('active', 'completed');
+    step.status.textContent = 'Waiting...';
+  });
+}
+
+// Update timeline step
+function updateTimeline(stepNumber, status, isActive = false, isCompleted = false) {
+  const step = timelineSteps[`step${stepNumber}`];
+  if (!step) return;
+
+  step.element.classList.remove('active', 'completed');
+  if (isActive) {
+    step.element.classList.add('active');
+  } else if (isCompleted) {
+    step.element.classList.add('completed');
+  }
+  step.status.textContent = status;
+}
+
+// Event listeners
+emailsInput.addEventListener('input', () => {
+  saveSettings();
+  updateEmailCount();
+});
+
+minWaitTimeInput.addEventListener('change', saveSettings);
+maxWaitTimeInput.addEventListener('change', saveSettings);
+waitAfterOpenInput.addEventListener('change', saveSettings);
+waitAfterSendInput.addEventListener('change', saveSettings);
+subjectsInput.addEventListener('input', saveSettings);
+messagesInput.addEventListener('input', saveSettings);
+
+startBtn.addEventListener('click', async () => {
+  await saveSettings();
+  
+  const emails = emailsInput.value.split('\n').filter(e => e.trim());
+  if (emails.length === 0) {
+    alert('Please enter at least one email');
+    return;
+  }
+
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  clearTimeline();
+
+  await chrome.storage.local.set({ isRunning: true });
+  chrome.runtime.sendMessage({ action: 'startAutomation' });
+});
+
+stopBtn.addEventListener('click', async () => {
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  clearTimeline();
+
+  await chrome.storage.local.set({ isRunning: false });
+  chrome.runtime.sendMessage({ action: 'stopAutomation' });
+});
+
+// Listen for messages from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'updateTimeline') {
+    updateTimeline(message.step, message.status, message.isActive, message.isCompleted);
+  } else if (message.action === 'automationStopped') {
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    clearTimeline();
+    loadSettings(); // Reload to refresh history
+  } else if (message.action === 'updateHistory') {
+    loadHistory(message.history);
+  }
+});
+
+// Initialize
+loadSettings();
+
+// Poll for timeline updates (since popup might close)
+let pollInterval;
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(async () => {
+    const result = await chrome.storage.local.get(['timeline', 'isRunning']);
+    if (result.timeline) {
+      updateTimeline(
+        result.timeline.step,
+        result.timeline.status,
+        result.timeline.isActive,
+        result.timeline.isCompleted
+      );
+    }
+    if (result.isRunning) {
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    } else {
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      clearInterval(pollInterval);
+    }
+  }, 500);
+}
+
+startPolling();

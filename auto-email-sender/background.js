@@ -1,396 +1,366 @@
-// ============================================================================
-// GLOBAL VARIABLES
-// ============================================================================
-let automationRunning = false;
-let emailList = [];
-let subjectList = [];
-let messageList = [];
-let settings = {};
-let processedCount = 0;
-let currentTabId = null;
+let isAutomationRunning = false;
+let automationInterval = null;
 
-// ============================================================================
-// MESSAGE LISTENER
-// ============================================================================
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'startAutomation') {
-    startAutomation();
-  } else if (message.action === 'stopAutomation') {
-    stopAutomation();
-  } else if (message.action === 'emailSent') {
-    handleEmailSent(message.tabId, message.email, message.subject);
-  } else if (message.action === 'updateTimeline') {
-    updateTimeline(message.step, message.status, message.countdown);
-  }
-  return true;
-});
-
-// ============================================================================
-// AUTOMATION CONTROL
-// ============================================================================
-async function startAutomation() {
-  automationRunning = true;
-  processedCount = 0;
-
-  // Load settings
-  const result = await chrome.storage.local.get([
-    'minWait', 'maxWait', 'waitAfterOpen', 'waitAfterSend',
-    'emails', 'subjects', 'messages'
-  ]);
-
-  settings = {
-    minWait: parseInt(result.minWait) || 5,
-    maxWait: parseInt(result.maxWait) || 10,
-    waitAfterOpen: parseInt(result.waitAfterOpen) || 3,
-    waitAfterSend: parseInt(result.waitAfterSend) || 2
-  };
-
-  // Parse emails, subjects, and messages
-  if (!result.emails || !result.subjects || !result.messages) {
-    updateStatus('Error: Missing email, subject, or message data', 'error');
-    stopAutomation();
-    return;
-  }
-
-  emailList = result.emails.split('\n').map(e => e.trim()).filter(e => e);
-  subjectList = result.subjects.split('|').map(s => s.trim()).filter(s => s);
-  messageList = result.messages.split('|').map(m => m.trim()).filter(m => m);
-
-  if (emailList.length === 0 || subjectList.length === 0 || messageList.length === 0) {
-    updateStatus('Error: Invalid input data', 'error');
-    stopAutomation();
-    return;
-  }
-
-  updateStatus(`Starting automation with ${emailList.length} emails...`, 'info');
-  processNextEmail();
-}
-
-function stopAutomation() {
-  automationRunning = false;
-  updateStatus('Automation stopped', 'info');
-  chrome.runtime.sendMessage({ action: 'automationComplete' });
-  updateTimeline('waiting', 'Stopped', null);
-}
-
-// ============================================================================
-// MAIN AUTOMATION FLOW
-// ============================================================================
-async function processNextEmail() {
-  if (!automationRunning) return;
-  if (emailList.length === 0) {
-    updateStatus(`All emails sent! Processed ${processedCount} email(s).`, 'success');
-    stopAutomation();
-    return;
-  }
-
-  // Get email data
-  const email = emailList[0];
-  const subjectIndex = processedCount % subjectList.length;
-  const messageIndex = processedCount % messageList.length;
-  const subject = subjectList[subjectIndex];
-  const message = messageList[messageIndex];
-
-  updateStatus(`Processing email ${processedCount + 1} (${emailList.length} remaining): ${email}`, 'info');
-
-  // Step 1: Open tab
-  const tab = await openTabForEmail(email);
-  if (!tab) return;
-
-  // Step 2: Wait after tab open
-  await waitAfterTabOpen(tab.id);
-
-  // Step 3: Fill form and send email
-  await fillAndSendEmailToTab(tab.id, email, subject, message);
-}
-
-// ============================================================================
-// AUTOMATION STEP FUNCTIONS
-// ============================================================================
-async function openTabForEmail(email) {
-  updateTimeline('open-tab', 'Opening tab...', null);
-  
-  const url = `https://mail.google.com/mail/u/0/?fs=1&tf=cm&source=mailto&to=${encodeURIComponent(email)}`;
-  
-  try {
-    const tab = await chrome.tabs.create({ url, active: true });
-    currentTabId = tab.id;
-    updateTimeline('open-tab', 'Tab opened', null);
-    return tab;
-  } catch (error) {
-    updateStatus(`Error opening tab: ${error.message}`, 'error');
-    stopAutomation();
-    return null;
-  }
-}
-
-async function waitAfterTabOpen(tabId) {
-  return new Promise((resolve) => {
-    const listener = (tabIdParam, changeInfo) => {
-      if (tabIdParam === tabId && changeInfo.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(listener);
-        
-        let countdown = settings.waitAfterOpen;
-        updateTimeline('open-tab', 'Waiting after tab open', countdown);
-        
-        const countdownInterval = setInterval(() => {
-          countdown--;
-          if (countdown > 0) {
-            updateTimeline('open-tab', 'Waiting after tab open', countdown);
-          } else {
-            clearInterval(countdownInterval);
-            updateTimeline('open-tab', 'Tab ready', null);
-          }
-        }, 1000);
-        
-        setTimeout(() => {
-          resolve();
-        }, settings.waitAfterOpen * 1000);
-      }
-    };
-    
-    chrome.tabs.onUpdated.addListener(listener);
-  });
-}
-
-async function fillAndSendEmailToTab(tabId, email, subject, message) {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await chrome.tabs.sendMessage(tabId, {
-        action: 'fillAndSend',
-        subject: subject,
-        message: message,
-        tabId: tabId,
-        email: email
-      });
-      success = true;
-      break;
-    } catch (err) {
-      console.log(`Attempt ${attempt + 1} failed:`, err.message);
-      if (attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-  }
-  
-  if (!success) {
-    updateStatus(`Error: Could not interact with Gmail page`, 'error');
-    if (emailList.length > 0 && emailList[0] === email) {
-      emailList.shift();
-      await chrome.storage.local.set({ emails: emailList.join('\n') });
-    }
-    await closeTab(tabId);
-    if (emailList.length > 0 && automationRunning) {
-      setTimeout(() => processNextEmail(), 2000);
-    } else {
-      stopAutomation();
-    }
-  }
-}
-
-async function handleEmailSent(tabId, sentEmail, sentSubject) {
-  if (!automationRunning) return;
-
-  try {
-    await reloadSettings();
-
-    // Step 1: Remove email from list
-    const shouldStop = await removeEmailFromList(sentEmail, sentSubject);
-    if (shouldStop) {
-      await waitAfterSend();
-      await closeTab(tabId);
-      stopAutomation();
-      return;
-    }
-
-    // Step 2: Wait after send
-    await waitAfterSend();
-
-    // Step 3: Close tab (handle errors gracefully)
-    await closeTab(tabId);
-
-    // Step 4: Wait random time before next email (THIS MUST HAPPEN)
-    await waitRandomTimeBeforeNextEmail();
-
-    // Step 5: Process next email
-    if (automationRunning && emailList.length > 0) {
-      resetTimelineForNewEmail();
-      await new Promise(resolve => setTimeout(resolve, 100));
-      processNextEmail();
-    }
-  } catch (error) {
-    console.error('Error in handleEmailSent:', error);
-    // Even if there's an error, try to continue with next email
-    if (automationRunning && emailList.length > 0) {
-      await waitRandomTimeBeforeNextEmail();
-      if (automationRunning && emailList.length > 0) {
-        processNextEmail();
-      }
-    } else {
-      stopAutomation();
-    }
-  }
-}
-
-async function removeEmailFromList(email, subject) {
-  if (emailList.length === 0) return true;
-
-  const processedEmail = emailList.shift();
-  processedCount++;
-  
-  const vladivostokTime = getVladivostokTime();
-  await addToHistory(processedEmail, subject || 'N/A', vladivostokTime);
-  
-  const updatedEmailList = emailList.join('\n');
-  await chrome.storage.local.set({ emails: updatedEmailList });
-  
-  try {
-    chrome.runtime.sendMessage({ 
-      action: 'updateEmailList', 
-      remainingEmails: updatedEmailList,
-      remaining: emailList.length,
-      total: processedCount
-    }).catch(() => {});
-    
-    chrome.runtime.sendMessage({ 
-      action: 'addHistoryItem', 
-      email: processedEmail,
-      subject: subject || 'N/A',
-      time: vladivostokTime
-    }).catch(() => {});
-  } catch (e) {}
-
-  updateStatus(`Email sent to ${processedEmail}. ${emailList.length} remaining, ${processedCount} processed.`, 'info');
-  
-  return emailList.length === 0;
-}
-
-async function waitAfterSend() {
-  let countdown = settings.waitAfterSend;
-  updateTimeline('add-description', 'Waiting after send', countdown);
-  updateStatus(`Waiting ${countdown} seconds after sending...`, 'info');
-  
-  const interval = setInterval(() => {
-    countdown--;
-    if (countdown > 0) {
-      updateTimeline('add-description', 'Waiting after send', countdown);
-    } else {
-      clearInterval(interval);
-    }
-  }, 1000);
-  
-  await new Promise(resolve => setTimeout(resolve, settings.waitAfterSend * 1000));
-}
-
-async function closeTab(tabId) {
-  updateStatus('Closing tab...', 'info');
-  updateTimeline('add-description', 'Closing tab...', null);
-  
-  try {
-    // Check if tab exists before trying to close it
-    const tab = await chrome.tabs.get(tabId);
-    if (tab) {
-      await chrome.tabs.remove(tabId);
-      updateTimeline('add-description', 'Tab closed', null);
-    }
-  } catch (error) {
-    // Tab might already be closed or doesn't exist - that's okay, continue
-    console.log('Tab may already be closed:', error.message);
-    updateTimeline('add-description', 'Tab closed', null);
-  }
-}
-
-async function waitRandomTimeBeforeNextEmail() {
-  const waitTime = getRandomWaitTime();
-  console.log(`Random wait: ${waitTime}s (min: ${settings.minWait}, max: ${settings.maxWait})`);
-  updateStatus(`Tab closed. Waiting ${waitTime} seconds (random ${settings.minWait}-${settings.maxWait}s) before opening next tab... (${emailList.length} remaining)`, 'info');
-  
-  updateTimeline('waiting', 'Waiting for next email', waitTime);
-  
-  let waitCountdown = waitTime;
-  const interval = setInterval(() => {
-    waitCountdown--;
-    if (waitCountdown > 0) {
-      updateTimeline('waiting', 'Waiting for next email', waitCountdown);
-    } else {
-      clearInterval(interval);
-      updateTimeline('waiting', 'Wait complete', null);
-    }
-  }, 1000);
-  
-  // Wait the full random time
-  await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
-  
-  // Clear interval in case it's still running
-  clearInterval(interval);
-}
-
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
-async function reloadSettings() {
-  const result = await chrome.storage.local.get(['minWait', 'maxWait', 'waitAfterOpen', 'waitAfterSend']);
-  settings.minWait = parseInt(result.minWait) || 5;
-  settings.maxWait = parseInt(result.maxWait) || 10;
-  settings.waitAfterOpen = parseInt(result.waitAfterOpen) || 3;
-  settings.waitAfterSend = parseInt(result.waitAfterSend) || 2;
-}
-
-function getRandomWaitTime() {
-  if (!settings || !settings.minWait || !settings.maxWait) {
-    return 5;
-  }
-  const min = parseInt(settings.minWait);
-  const max = parseInt(settings.maxWait);
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function updateStatus(text, type = 'info') {
-  chrome.runtime.sendMessage({ action: 'updateStatus', text, type });
-}
-
-function updateTimeline(step, status, countdown = null) {
-  chrome.runtime.sendMessage({ 
-    action: 'updateTimeline', 
-    step: step, 
-    status: status, 
-    countdown: countdown 
-  });
-}
-
-function resetTimelineForNewEmail() {
-  try {
-    chrome.runtime.sendMessage({ action: 'resetTimeline' }).catch(() => {});
-  } catch (err) {}
-}
-
-function getVladivostokTime() {
+// Get Vladivostok timezone datetime
+function getVladivostokDateTime() {
   const now = new Date();
   const vladivostokTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Vladivostok"}));
   return vladivostokTime.toLocaleString("en-US", {
-    timeZone: "Asia/Vladivostok",
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    hour12: false
+    timeZone: 'Asia/Vladivostok'
   });
 }
 
-async function addToHistory(email, subject, time) {
-  const result = await chrome.storage.local.get(['emailHistory']);
-  const history = result.emailHistory || [];
+// Random number between min and max
+function randomBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Update timeline in storage
+async function updateTimeline(step, status, isActive = false, isCompleted = false) {
+  await chrome.storage.local.set({
+    timeline: { step, status, isActive, isCompleted }
+  });
   
-  history.unshift({ email, subject, time });
+  // Try to send message to popup if open
+  try {
+    chrome.runtime.sendMessage({
+      action: 'updateTimeline',
+      step,
+      status,
+      isActive,
+      isCompleted
+    });
+  } catch (e) {
+    // Popup might be closed, that's okay
+  }
+}
+
+// Update history
+async function addToHistory(email, subject) {
+  const result = await chrome.storage.local.get(['history']);
+  const history = result.history || [];
   
-  if (history.length > 100) {
+  history.unshift({
+    email,
+    subject,
+    datetime: getVladivostokDateTime()
+  });
+
+  // Keep only last 50 entries
+  if (history.length > 50) {
     history.pop();
   }
-  
-  await chrome.storage.local.set({ emailHistory: history });
+
+  await chrome.storage.local.set({ history });
+
+  // Try to send message to popup if open
+  try {
+    chrome.runtime.sendMessage({
+      action: 'updateHistory',
+      history
+    });
+  } catch (e) {
+    // Popup might be closed, that's okay
+  }
 }
+
+// Wait for specified seconds with countdown
+async function waitWithCountdown(seconds, stepNumber, stepName) {
+  for (let i = seconds; i > 0 && isAutomationRunning; i--) {
+    await updateTimeline(stepNumber, `${stepName}... ${i} seconds left`, true, false);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  if (isAutomationRunning) {
+    await updateTimeline(stepNumber, `${stepName}... Complete`, false, true);
+  }
+}
+
+// Process email automation
+async function processEmail(email, subjects, messages, settings) {
+  if (!isAutomationRunning) return;
+
+  // Select random subject and message
+  const subject = subjects.length > 0 ? subjects[Math.floor(Math.random() * subjects.length)] : '';
+  const message = messages.length > 0 ? messages[Math.floor(Math.random() * messages.length)] : '';
+
+  // Step 1: Open tab
+  await updateTimeline(1, 'Opening tab...', true, false);
+  
+  const url = `https://mail.google.com/mail/u/0/?fs=1&tf=cm&source=mailto&to=${encodeURIComponent(email)}`;
+  const tab = await chrome.tabs.create({ url, active: true });
+
+  // Wait for tab to load
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Wait after open tab
+  await waitWithCountdown(settings.waitAfterOpen, 1, 'Waiting after opening tab');
+
+  if (!isAutomationRunning) {
+    await chrome.tabs.remove(tab.id);
+    return;
+  }
+
+  // Wait for form to be ready
+  let retries = 10;
+  let formReady = false;
+  
+  while (retries > 0 && !formReady && isAutomationRunning) {
+    try {
+      const result = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: checkFormReady
+      });
+      
+      if (result[0]?.result) {
+        formReady = true;
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        retries--;
+      }
+    } catch (error) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      retries--;
+    }
+  }
+
+  // Step 2: Fill form and send email
+  await updateTimeline(2, 'Filling form and sending email...', true, false);
+
+  // Fill email form
+  if (formReady && isAutomationRunning) {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: fillEmailForm,
+        args: [subject, message]
+      });
+    } catch (error) {
+      console.error('Error filling form:', error);
+    }
+  }
+
+  // Wait a bit for form to be fully ready
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Click send button
+  try {
+    const result = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: clickSendButton
+    });
+    
+    if (!result[0]?.result) {
+      // Retry after a delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: clickSendButton
+      });
+    }
+  } catch (error) {
+    console.error('Error clicking send:', error);
+  }
+
+  // Wait after send
+  await waitWithCountdown(settings.waitAfterSend, 2, 'Waiting after send');
+
+  if (!isAutomationRunning) {
+    await chrome.tabs.remove(tab.id);
+    return;
+  }
+
+  // Close tab
+  await chrome.tabs.remove(tab.id);
+
+  // Update timeline
+  await updateTimeline(2, 'Email sent', false, true);
+
+  // Add to history
+  await addToHistory(email, subject);
+
+  // Remove email from list
+  const result = await chrome.storage.local.get(['emails']);
+  const emails = result.emails || [];
+  const updatedEmails = emails.filter(e => e !== email);
+  await chrome.storage.local.set({ emails: updatedEmails });
+
+  // Step 3: Wait for next email
+  if (updatedEmails.length > 0 && isAutomationRunning) {
+    const waitTime = randomBetween(settings.minWaitTime, settings.maxWaitTime);
+    await waitWithCountdown(waitTime, 3, 'Waiting for next email');
+  }
+
+  // Reset timeline
+  if (!isAutomationRunning || updatedEmails.length === 0) {
+    await updateTimeline(1, 'Waiting...', false, false);
+    await updateTimeline(2, 'Waiting...', false, false);
+    await updateTimeline(3, 'Waiting...', false, false);
+  }
+}
+
+// Functions to inject into Gmail page
+function checkFormReady() {
+  const subjectInput = document.querySelector('input[name="subjectbox"]') ||
+                       document.querySelector('input[aria-label="Subject"]');
+  const messageBody = document.querySelector('div[role="textbox"][aria-label="Message Body"]') ||
+                      document.querySelector('div[contenteditable="true"][role="textbox"]');
+  return !!(subjectInput && messageBody && subjectInput.offsetParent !== null);
+}
+
+function fillEmailForm(subject, message) {
+  // Fill subject - try multiple selectors
+  const subjectSelectors = [
+    'input[name="subjectbox"]',
+    'input[aria-label="Subject"]',
+    'input[placeholder="Subject"]'
+  ];
+  
+  let subjectInput = null;
+  for (const selector of subjectSelectors) {
+    subjectInput = document.querySelector(selector);
+    if (subjectInput && subjectInput.offsetParent !== null) break;
+  }
+  
+  if (subjectInput) {
+    subjectInput.focus();
+    subjectInput.value = subject;
+    subjectInput.dispatchEvent(new Event('input', { bubbles: true }));
+    subjectInput.dispatchEvent(new Event('change', { bubbles: true }));
+    subjectInput.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+    subjectInput.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+  }
+
+  // Fill message body - try multiple selectors
+  const messageSelectors = [
+    'div[role="textbox"][aria-label="Message Body"]',
+    'div[contenteditable="true"][aria-label*="Message"]',
+    'div[contenteditable="true"][role="textbox"]'
+  ];
+  
+  let messageDiv = null;
+  for (const selector of messageSelectors) {
+    messageDiv = document.querySelector(selector);
+    if (messageDiv && messageDiv.offsetParent !== null) break;
+  }
+  
+  if (messageDiv) {
+    messageDiv.focus();
+    // Replace \n with actual newlines
+    const formattedMessage = message.replace(/\\n/g, '\n');
+    messageDiv.textContent = formattedMessage;
+    messageDiv.innerHTML = formattedMessage.replace(/\n/g, '<br>');
+    messageDiv.dispatchEvent(new Event('input', { bubbles: true }));
+    messageDiv.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+function clickSendButton() {
+  // Try multiple selectors for send button
+  const sendSelectors = [
+    'div[role="button"][data-tooltip*="Send"]',
+    'div[role="button"][aria-label*="Send"]',
+    'div[aria-label*="Send"][role="button"]'
+  ];
+  
+  for (const selector of sendSelectors) {
+    const sendButton = document.querySelector(selector);
+    if (sendButton && sendButton.offsetParent !== null && !sendButton.disabled) {
+      sendButton.click();
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Main automation loop
+async function startAutomationLoop() {
+  while (isAutomationRunning) {
+    const result = await chrome.storage.local.get([
+      'emails', 'subjects', 'messages', 'minWaitTime', 'maxWaitTime',
+      'waitAfterOpen', 'waitAfterSend'
+    ]);
+
+    const emails = result.emails || [];
+    const subjects = (result.subjects || []).map(s => s.trim()).filter(s => s);
+    const messages = (result.messages || []).map(m => m.trim()).filter(m => m);
+
+    if (emails.length === 0) {
+      // No more emails, stop automation
+      await stopAutomation();
+      break;
+    }
+
+    const email = emails[0];
+    const settings = {
+      minWaitTime: result.minWaitTime || 5,
+      maxWaitTime: result.maxWaitTime || 10,
+      waitAfterOpen: result.waitAfterOpen || 3,
+      waitAfterSend: result.waitAfterSend || 2
+    };
+
+    await processEmail(email, subjects, messages, settings);
+
+    // Small delay before next iteration
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+}
+
+// Start automation
+async function startAutomation() {
+  if (isAutomationRunning) return;
+
+  isAutomationRunning = true;
+  await chrome.storage.local.set({ isRunning: true });
+
+  // Clear timeline
+  await updateTimeline(1, 'Waiting...', false, false);
+  await updateTimeline(2, 'Waiting...', false, false);
+  await updateTimeline(3, 'Waiting...', false, false);
+
+  // Start loop
+  startAutomationLoop();
+}
+
+// Stop automation
+async function stopAutomation() {
+  isAutomationRunning = false;
+  await chrome.storage.local.set({ isRunning: false });
+
+  // Clear timeline
+  await updateTimeline(1, 'Waiting...', false, false);
+  await updateTimeline(2, 'Waiting...', false, false);
+  await updateTimeline(3, 'Waiting...', false, false);
+
+  // Notify popup
+  try {
+    chrome.runtime.sendMessage({ action: 'automationStopped' });
+  } catch (e) {
+    // Popup might be closed
+  }
+}
+
+// Listen for messages
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'startAutomation') {
+    startAutomation();
+    sendResponse({ success: true });
+  } else if (message.action === 'stopAutomation') {
+    stopAutomation();
+    sendResponse({ success: true });
+  }
+  return true;
+});
+
+// Restore state on service worker restart
+chrome.storage.local.get(['isRunning']).then(result => {
+  if (result.isRunning) {
+    startAutomation();
+  }
+});
