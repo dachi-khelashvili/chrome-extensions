@@ -7,8 +7,11 @@ const emailsInput = document.getElementById('emails');
 const subjectsInput = document.getElementById('subjects');
 const messagesInput = document.getElementById('messages');
 const emailCount = document.querySelector('.email-count');
+const subjectCount = document.getElementById('subject-count');
+const messageCount = document.getElementById('message-count');
 const startBtn = document.getElementById('startBtn');
 const stopBtn = document.getElementById('stopBtn');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 const historyList = document.getElementById('historyList');
 const timelineSteps = {
   step1: { element: document.getElementById('step1'), status: document.getElementById('status1') },
@@ -46,7 +49,14 @@ async function loadSettings() {
 async function saveSettings() {
   const emails = emailsInput.value.split('\n').filter(e => e.trim());
   const subjects = subjectsInput.value.split(' | ').map(s => s.trim()).filter(s => s);
-  const messages = messagesInput.value.split(' | ').map(m => m.trim()).filter(m => m);
+  // Split messages by " | ", keep internal newlines in each message
+  const messages = messagesInput.value
+    .split(/\s*\|\s*/)
+    .map(m => m.trim())
+    .filter(m => m);
+
+  subjectCount.textContent = `${subjects.length} subjects`;
+  messageCount.textContent = `${messages.length} messages`;
 
   await chrome.storage.local.set({
     minWaitTime: parseInt(minWaitTimeInput.value) || 5,
@@ -64,7 +74,14 @@ async function saveSettings() {
 // Update email count
 function updateEmailCount() {
   const emails = emailsInput.value.split('\n').filter(e => e.trim());
+  const subjects = subjectsInput.value.split(' | ').map(s => s.trim()).filter(s => s);
+  const messages = messagesInput.value
+    .split(/\s*\|\s*/)
+    .map(m => m.trim())
+    .filter(m => m);
   emailCount.textContent = `${emails.length} emails`;
+  subjectCount.textContent = `${subjects.length} subjects`;
+  messageCount.textContent = `${messages.length} messages`;
 }
 
 // Load history
@@ -74,10 +91,9 @@ function loadHistory(history) {
     return;
   }
 
-  historyList.innerHTML = history.map(item => `
+  historyList.innerHTML = `<div class="history-count">${history.length} emails sent</div>` + history.map(item => `
     <div class="history-item">
       <div class="history-email">${escapeHtml(item.email)}</div>
-      <div class="history-subject">${escapeHtml(item.subject || 'No subject')}</div>
       <div class="history-time">${escapeHtml(item.datetime)}</div>
     </div>
   `).join('');
@@ -149,6 +165,13 @@ stopBtn.addEventListener('click', async () => {
 
   await chrome.storage.local.set({ isRunning: false });
   chrome.runtime.sendMessage({ action: 'stopAutomation' });
+});
+
+clearHistoryBtn.addEventListener('click', async () => {
+  if (confirm('Are you sure you want to clear all history?')) {
+    await chrome.storage.local.set({ history: [] });
+    loadHistory([]);
+  }
 });
 
 // Listen for messages from background script

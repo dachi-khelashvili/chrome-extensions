@@ -4,15 +4,15 @@ let automationInterval = null;
 // Get Vladivostok timezone datetime
 function getVladivostokDateTime() {
   const now = new Date();
-  const vladivostokTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Vladivostok"}));
-  return vladivostokTime.toLocaleString("en-US", {
+  return now.toLocaleString("en-US", {
+    timeZone: 'Asia/Vladivostok',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
-    timeZone: 'Asia/Vladivostok'
+    hour12: false
   });
 }
 
@@ -192,7 +192,7 @@ async function processEmail(email, subjects, messages, settings) {
 
   // Step 3: Wait for next email
   if (updatedEmails.length > 0 && isAutomationRunning) {
-    const waitTime = randomBetween(settings.minWaitTime, settings.maxWaitTime);
+    const waitTime = randomBetween(settings.minWaitTime*60, settings.maxWaitTime*60);
     await waitWithCountdown(waitTime, 3, 'Waiting for next email');
   }
 
@@ -251,10 +251,9 @@ function fillEmailForm(subject, message) {
   
   if (messageDiv) {
     messageDiv.focus();
-    // Replace \n with actual newlines
-    const formattedMessage = message.replace(/\\n/g, '\n');
-    messageDiv.textContent = formattedMessage;
-    messageDiv.innerHTML = formattedMessage.replace(/\n/g, '<br>');
+    // Message already contains actual newlines
+    messageDiv.textContent = message;
+    messageDiv.innerHTML = message.replace(/\n/g, '<br>');
     messageDiv.dispatchEvent(new Event('input', { bubbles: true }));
     messageDiv.dispatchEvent(new Event('change', { bubbles: true }));
   }
