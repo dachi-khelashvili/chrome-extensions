@@ -6,7 +6,8 @@
   "permissions": [
     "tabs",
     "storage",
-    "scripting"
+    "scripting",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://mail.google.com/*"
