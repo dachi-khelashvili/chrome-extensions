@@ -18,7 +18,6 @@ const timelineSteps = {
   step2: { element: document.getElementById('step2'), status: document.getElementById('status2') },
   step3: { element: document.getElementById('step3'), status: document.getElementById('status3') }
 };
-const viewToggleBtn = document.getElementById('viewToggleBtn');
 
 // Load saved settings
 async function loadSettings() {
@@ -186,91 +185,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     loadSettings(); // Reload to refresh history
   } else if (message.action === 'updateHistory') {
     loadHistory(message.history);
+  } else if (message.action === 'emailRemoved') {
+    // Update email textarea when email is removed
+    emailsInput.value = message.emails.join('\n');
+    updateEmailCount();
   }
 });
 
-// Toggle between popup and sidebar
-async function toggleView() {
-  try {
-    // Check if we're in popup mode (window.innerWidth is typically small for popup)
-    const isPopup = window.innerWidth < 500;
-    
-    if (isPopup) {
-      // Switch to sidebar
-      await chrome.sidePanel.setOptions({
-        path: 'popup.html',
-        enabled: true
-      });
-      
-      // Get current window
-      const windows = await chrome.windows.getAll({ populate: false });
-      const currentWindow = windows.find(w => w.focused) || windows[0];
-      
-      if (currentWindow) {
-        // Open sidebar
-        await chrome.sidePanel.open({ windowId: currentWindow.id });
-      }
-      
-      // Close popup after a short delay to allow sidebar to open
-      setTimeout(() => {
-        window.close();
-      }, 100);
-    } else {
-      // In sidebar mode, close the sidebar
-      // User can click the extension icon to open as popup
-      window.close();
-    }
-  } catch (error) {
-    console.error('Error toggling view:', error);
-    // Fallback: try to open sidebar directly
-    try {
-      await chrome.sidePanel.setOptions({
-        path: 'popup.html',
-        enabled: true
-      });
-      const windows = await chrome.windows.getAll({ populate: false });
-      const currentWindow = windows.find(w => w.focused) || windows[0];
-      if (currentWindow) {
-        await chrome.sidePanel.open({ windowId: currentWindow.id });
-        setTimeout(() => window.close(), 100);
-      }
-    } catch (e) {
-      console.error('Fallback also failed:', e);
-    }
+// Listen for storage changes to update email list
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.emails) {
+    emailsInput.value = changes.emails.newValue.join('\n');
+    updateEmailCount();
   }
-}
-
-// Update button icon based on current view
-function updateToggleButton() {
-  const isPopup = window.innerWidth < 500;
-  if (viewToggleBtn) {
-    if (isPopup) {
-      viewToggleBtn.title = 'Switch to sidebar';
-      viewToggleBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 12h18M3 6h18M3 18h18"/>
-        </svg>
-      `;
-    } else {
-      viewToggleBtn.title = 'Switch to popup';
-      viewToggleBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-          <line x1="9" y1="3" x2="9" y2="21"/>
-        </svg>
-      `;
-    }
-  }
-}
-
-// Event listener for toggle button
-if (viewToggleBtn) {
-  viewToggleBtn.addEventListener('click', toggleView);
-}
+});
 
 // Initialize
 loadSettings();
-updateToggleButton();
 
 // Poll for timeline updates (since popup might close)
 let pollInterval;

@@ -184,11 +184,21 @@ async function processEmail(email, subjects, messages, settings) {
   // Add to history
   await addToHistory(email, subject);
 
-  // Remove email from list
+  // Remove email from list (remove first email since we always process emails[0])
   const result = await chrome.storage.local.get(['emails']);
   const emails = result.emails || [];
-  const updatedEmails = emails.filter(e => e !== email);
+  const updatedEmails = emails.slice(1); // Remove first email
   await chrome.storage.local.set({ emails: updatedEmails });
+
+  // Notify popup to update email list
+  try {
+    chrome.runtime.sendMessage({
+      action: 'emailRemoved',
+      emails: updatedEmails
+    });
+  } catch (e) {
+    // Popup might be closed, that's okay
+  }
 
   // Step 3: Wait for next email
   if (updatedEmails.length > 0 && isAutomationRunning) {
@@ -355,6 +365,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   }
   return true;
+});
+
+// Open sidebar when extension icon is clicked
+chrome.action.onClicked.addListener(async (tab) => {
+  try {
+    await chrome.sidePanel.open({ windowId: tab.windowId });
+  } catch (error) {
+    console.error('Error opening sidebar:', error);
+  }
 });
 
 // Restore state on service worker restart
