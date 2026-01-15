@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Email Sender</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="header">
+    <img src="assets/icon-128.png" alt="Auto Email Sender">
+    <div class="header-content">
+      <h1>Auto Email Sender</h1>
+      <p>Automate sending emails through Gmail</p>
+    </div>
+  </div>
+  <div class="container">
+
+    <!-- Settings Section -->
+    <div class="section">
+      <h2>Settings</h2>
+
+      <div class="form-group" style="display: flex; flex-direction: row; gap: 2px; align-items: end;">
+        <label style="margin-right: 6px;">Waiting Time Between Emails:</label>
+        <input type="number" id="minWaitTime" min="0" value="5" style="max-width: 45px;">
+        <label>min</label>
+        <label style="margin-left: 4px; margin-right: 4px;">~</label>
+        <input type="number" id="maxWaitTime" min="0" value="10" style="max-width: 45px;">
+        <label>min</label>
+      </div>
+
+      <div class="form-group" style="display: flex; flex-direction: row; gap: 2px; align-items: end;">
+        <label style="margin-right: 6px;">Wait After Open Tab:</label>
+        <input type="number" id="waitAfterOpen" min="0" value="3" style="max-width: 45px;">
+        <label style="margin-right: 10px;">s,</label>
+        <label style="margin-left: 12px; margin-right: 6px;">Wait After Send:</label>
+        <input type="number" id="waitAfterSend" min="0" value="2" style="max-width: 45px;">
+        <label>s</label>
+      </div>
+    </div>
+
+    <!-- Timeline Section -->
+    <div class="section">
+      <h2>Timeline</h2>
+      <div class="timeline" id="timeline">
+        <div class="timeline-step" id="step1">
+          <div class="step-icon">🗂️</div>
+          <div class="step-content">
+            <div class="step-title">Opening Tab</div>
+            <div class="step-status" id="status1">Waiting...</div>
+          </div>
+        </div>
+        <div class="timeline-step" id="step2">
+          <div class="step-icon">✉️</div>
+          <div class="step-content">
+            <div class="step-title">Sending Email</div>
+            <div class="step-status" id="status2">Waiting...</div>
+          </div>
+        </div>
+        <div class="timeline-step" id="step3">
+          <div class="step-icon">⏳</div>
+          <div class="step-content">
+            <div class="step-title">Waiting for Next</div>
+            <div class="step-status" id="status3">Waiting...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="section" style="display: flex; flex-direction: row; gap: 12px;">
+      <button class="btn btn-primary" id="startBtn">Start Automation</button>
+      <button class="btn btn-danger" id="stopBtn" disabled>Stop Automation</button>
+    </div>
+
+    <!-- History Section -->
+    <div class="section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="margin-bottom: 0;">History</h2>
+        <button class="btn btn-danger" id="clearHistoryBtn"
+          style="width: auto; padding: 6px 12px; margin-bottom: 0; font-size: 12px;">Clear History</button>
+      </div>
+      <div class="history-container">
+        <div class="history-list" id="historyList">
+          <div class="history-empty">No emails sent yet</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="section" style="margin-bottom: 0;">
+      <h2>Input</h2>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label>Emails (one per line)</label>
+          <div class="email-count">0 emails</div>
+        </div>
+        <textarea id="emails" placeholder="email1@example.com&#10;email2@example.com&#10;email3@example.com"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label>Subjects (separated by " | ")</label>
+          <label id="subject-count">0 subjects</label>
+        </div>
+        <textarea id="subjects" placeholder="Subject 1 | Subject 2 | Subject 3"></textarea>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label>Messages (separated by " | ")</label>
+          <label id="message-count">0 messages</label>
+        </div>
+        <textarea id="messages" placeholder="Message 1&#10;Line 2 | Message 2&#10;Line 2 | Message 3"></textarea>
+      </div>
+    </div>
+
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
