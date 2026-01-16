@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Difference Finder</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <div class="header">
+    <img src="assets/icon-128.png" alt="Difference Finder" />
+    <div class="header-content">
+      <div class="header-content">
+        <h1>Difference Finder</h1>
+        <p>Compare two lists line by line</p>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="section">
+      <h2>GitHub</h2>
+      <div class="row-group">
+        <label for="githubToken">GitHub Token:</label>
+        <input style="flex: 1" type="password" id="githubToken" placeholder="Enter your GitHub personal access token" />
+      </div>
+      <div class="row-group">
+        <label for="githubUsername">GitHub Username:</label>
+        <input style="flex: 1" type="text" id="githubUsername"
+          placeholder="Enter GitHub username (leave empty for authenticated user)" />
+      </div>
+      <div class="row-group">
+        <button style="flex: 1" id="getFollowingBtn">Get Following</button>
+        <button style="flex: 1" id="getFollowersBtn">Get Followers</button>
+      </div>
+      <div class="row-group">
+        <button style="flex: 1" id="openTabsBtn">Open Tabs</button>
+        <button style="flex: 1" id="closeGitHubTabsBtn">Close Tabs</button>
+      </div>
+      <div class="row-group">
+        <label for="delayInput">Delay(ms):</label>
+        <input style="flex: 1" type="number" id="delayInput" placeholder="500" min="0" step="100" class="delay-input">
+        <button id="clickFollowBtn">Click Follow</button>
+        <button id="clickUnfollowBtn">Click Unfollow</button>
+      </div>
+    </div>
+
+    <div class="status-bar" id="statusBar" style="display: none;">
+      <span id="statusMessage"></span>
+    </div>
+
+    <div class="section">
+      <h2>Comparison</h2>
+      <div class="row-group">
+        <textarea style="flex: 1" id="textarea1" placeholder="Enter URLs or words, one per line..."></textarea>
+        <textarea style="flex: 1" id="textarea2" placeholder="Enter URLs or words, one per line..."></textarea>
+      </div>
+      <div class="row-group">
+        <select id="methodSelect">
+          <option value="a-and-b" selected>(...(:::)...)</option>
+          <option value="a-or-b">(:::(:::):::)</option>
+          <option value="a-not-b">(:::(...)...)</option>
+          <option value="b-not-a">(...(...):::)</option>
+          <option value="symmetric-diff">(:::(...):::)</option>
+        </select>
+        <button style="flex: 1" id="compareBtn" class="btn btn-primary">Find Differences</button>
+        <button style="flex: 1" id="clearBtn" class="btn btn-secondary">Clear All</button>
+      </div>
+      <button id="copyBtn">Copy to Clipboard</button>
+      <div id="resultContent"></div>
+      <div id="resultCount"></div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+
+</html>
